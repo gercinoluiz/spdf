@@ -9,16 +9,16 @@ import {
   RotateCcw,
 } from 'lucide-react'
 
-import logo from '../../assets/logo.png'
+// import logo from '../../assets/logo.png'
 
 import { useState } from 'react'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+// import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+// import { Label } from '@/components/ui/label'
 
 import { DndContext, closestCenter } from '@dnd-kit/core'
 import {
@@ -113,7 +113,7 @@ function SortableThumbnail({
       {/* Contêiner interno que gira junto com a imagem */}
       <div style={innerContainerStyle}>
         {/* Imagem da página */}
-        <img
+        <Image
           src={previewUrl}
           alt='PDF page preview'
           className='rounded w-full'

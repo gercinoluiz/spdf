@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import Image from 'next/image'
 
 function SortableThumbnail({ id, previewUrl }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
@@ -37,7 +38,7 @@ function SortableThumbnail({ id, previewUrl }) {
       {...listeners}
       className='cursor-move'
     >
-      <img
+      <Image
         src={previewUrl}
         alt='PDF page preview'
         className='rounded border w-full'

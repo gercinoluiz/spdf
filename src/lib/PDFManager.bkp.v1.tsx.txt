@@ -113,7 +113,7 @@ function SortableThumbnail({
       {/* Contêiner interno que gira junto com a imagem */}
       <div style={innerContainerStyle}>
         {/* Imagem da página */}
-        <img
+        <Image
           src={previewUrl}
           alt='PDF page preview'
           className='rounded w-full'
