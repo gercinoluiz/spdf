@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable prefer-const */
+/* eslint-disable @next/next/no-img-element */
+
 'use client'
 import {
   UploadCloud,
@@ -138,7 +142,9 @@ export default function PDFManager() {
   const [mergedPdfUrl, setMergedPdfUrl] = useState(null)
   const [mergedFileName, setMergedFileName] = useState('merged')
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [mergedPdfSize, setMergedPdfSize] = useState(null) // tamanho do PDF final (em bytes)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [compressedPdfSize, setCompressedPdfSize] = useState(null) // tamanho do PDF comprimido (opcional)
 
   const [compressing, setCompressing] = useState(false)

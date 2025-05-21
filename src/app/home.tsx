@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable prefer-const */
+/* eslint-disable @next/next/no-img-element */
+
 'use client'
 
 import { useState } from 'react'
@@ -51,7 +56,6 @@ export default function Home() {
   const [files, setFiles] = useState([])
   const [pages, setPages] = useState([])
   const [mergedPdfUrl, setMergedPdfUrl] = useState(null)
-
   const handleFileChange = async (e) => {
     const newFiles = Array.from(e.target.files)
     setFiles((prev) => [...prev, ...newFiles])
