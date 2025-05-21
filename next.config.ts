@@ -1,4 +1,6 @@
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -7,4 +9,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;  // ✅ Forma correta para CommonJS
+export default nextConfig;
