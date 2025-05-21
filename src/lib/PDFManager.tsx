@@ -15,7 +15,7 @@ import {
 
 // import logo from '../../assets/logo.png'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf'
 
@@ -121,7 +121,10 @@ function SortableThumbnail({
           src={previewUrl}
           alt='PDF page preview'
           className='rounded w-full'
-          draggable={false} // Impede o comportamento padrão de drag de imagens
+          draggable={false}
+          width={500}  // Add an appropriate width
+          height={700} // Add an appropriate height
+          style={{ width: '100%', height: 'auto' }} // Make it responsive
         />
 
         {/* Área de arrasto no centro - só aparece ao passar o mouse */}
@@ -156,6 +159,24 @@ export default function PDFManager() {
   const [selectedPageId, setSelectedPageId] = useState(null)
   const [pageRotations, setPageRotations] = useState({})
 
+  useEffect(() => {
+    // Function to handle keydown events
+    const handleKeyDown = (event) => {
+      // Check if Delete key is pressed and a page is selected
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedPageId) {
+        handleDeletePage(selectedPageId);
+      }
+    };
+    
+    // Add event listener when component mounts
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up event listener when component unmounts
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedPageId]); // Re-run effect when selectedPageId changes
+  
   const handleSelectPage = (pageId) => {
     // Se clicar na mesma página, deseleciona
     if (selectedPageId === pageId) {
@@ -677,6 +698,20 @@ export default function PDFManager() {
     }
   }
 
+module.exports = {
+  images: {
+    domains: ['your-domain.com'], // Add any domains you need
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
+}
 
 
 
