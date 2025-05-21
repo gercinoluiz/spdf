@@ -698,19 +698,19 @@ export default function PDFManager() {
     }
   }
 
-module.exports = {
-  images: {
-    domains: ['your-domain.com'], // Add any domains you need
-    dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
-  },
+// module.exports = {
+//   images: {
+//     domains: ['your-domain.com'], // Add any domains you need
+//     dangerouslyAllowSVG: true,
+//     contentDispositionType: 'attachment',
+//     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+//     remotePatterns: [
+//       {
+//         protocol: 'https',
+//         hostname: '**',
+//       },
+//     ],
+//   },
 }
 
 
