@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prefer-const */
-/* eslint-disable @next/next/no-img-element */
 
 'use client'
 import {
@@ -12,6 +11,7 @@ import {
   RotateCw,
   RotateCcw,
 } from 'lucide-react'
+import Lottie from 'lottie-react'
 
 // import logo from '../../assets/logo.png'
 
@@ -33,6 +33,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Image from 'next/image'
+import Spin from '@/components/spin'
 
 // Configurar worker do PDF.js
 GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`
@@ -122,7 +123,7 @@ function SortableThumbnail({
           alt='PDF page preview'
           className='rounded w-full'
           draggable={false}
-          width={500}  // Add an appropriate width
+          width={500} // Add an appropriate width
           height={700} // Add an appropriate height
           style={{ width: '100%', height: 'auto' }} // Make it responsive
         />
@@ -145,9 +146,8 @@ export default function PDFManager() {
   const [mergedPdfUrl, setMergedPdfUrl] = useState(null)
   const [mergedFileName, setMergedFileName] = useState('merged')
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [mergedPdfSize, setMergedPdfSize] = useState(null) // tamanho do PDF final (em bytes)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [compressedPdfSize, setCompressedPdfSize] = useState(null) // tamanho do PDF comprimido (opcional)
 
   const [compressing, setCompressing] = useState(false)
@@ -163,20 +163,23 @@ export default function PDFManager() {
     // Function to handle keydown events
     const handleKeyDown = (event) => {
       // Check if Delete key is pressed and a page is selected
-      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedPageId) {
-        handleDeletePage(selectedPageId);
+      if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        selectedPageId
+      ) {
+        handleDeletePage(selectedPageId)
       }
-    };
-    
+    }
+
     // Add event listener when component mounts
-    window.addEventListener('keydown', handleKeyDown);
-    
+    window.addEventListener('keydown', handleKeyDown)
+
     // Clean up event listener when component unmounts
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [selectedPageId]); // Re-run effect when selectedPageId changes
-  
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedPageId]) // Re-run effect when selectedPageId changes
+
   const handleSelectPage = (pageId) => {
     // Se clicar na mesma página, deseleciona
     if (selectedPageId === pageId) {
@@ -260,10 +263,10 @@ export default function PDFManager() {
           const pageId = `page-${Date.now()}-${Math.random()
             .toString(36)
             .substr(2, 9)}`
-        
+
           // Create preview URL directly from the image file
           const previewUrl = URL.createObjectURL(file)
-        
+
           newPages.push({
             id: pageId,
             file,
@@ -276,7 +279,10 @@ export default function PDFManager() {
 
         // Atualizar o nome do arquivo mesclado
         if (!mergedFileName || mergedFileName === 'merged') {
-          const nameWithoutExt = newFiles[0].name.replace(/\.(pdf|jpe?g|png|gif|webp)$/i, '')
+          const nameWithoutExt = newFiles[0].name.replace(
+            /\.(pdf|jpe?g|png|gif|webp)$/i,
+            '',
+          )
           setMergedFileName(`${nameWithoutExt}_${new Date().toLocaleString()}`)
         }
       }
@@ -285,7 +291,9 @@ export default function PDFManager() {
       console.log('Arquivos carregados com sucesso!')
     } catch (error) {
       console.error('Erro ao carregar arquivos:', error)
-      alert('Ocorreu um erro ao carregar os arquivos. Por favor, tente novamente.')
+      alert(
+        'Ocorreu um erro ao carregar os arquivos. Por favor, tente novamente.',
+      )
     } finally {
       console.log('Finalizando carregamento de arquivos...')
       setLoadingPdfs(false)
@@ -332,18 +340,20 @@ export default function PDFManager() {
 
     try {
       const mergedPdf = await PDFDocument.create()
-      
+
       for (const pageData of pages) {
         if (pageData.isImage) {
           // Handle image file
-          const imageBytes = await fetch(pageData.previewUrl).then(res => res.arrayBuffer())
-          
+          const imageBytes = await fetch(pageData.previewUrl).then((res) =>
+            res.arrayBuffer(),
+          )
+
           // Create a new page with A4 dimensions
           // A4 size in points: 595 × 842 (portrait)
           const a4Page = mergedPdf.addPage([595, 842])
-          
+
           let image
-          
+
           if (pageData.file.type === 'image/jpeg') {
             image = await mergedPdf.embedJpg(imageBytes)
           } else if (pageData.file.type === 'image/png') {
@@ -355,39 +365,40 @@ export default function PDFManager() {
               img.onload = resolve
               img.src = pageData.previewUrl
             })
-            
+
             const canvas = document.createElement('canvas')
             canvas.width = img.width
             canvas.height = img.height
             const ctx = canvas.getContext('2d')
             ctx.drawImage(img, 0, 0)
-            
-            const pngData = await fetch(canvas.toDataURL('image/png'))
-              .then(res => res.arrayBuffer())
-            
+
+            const pngData = await fetch(canvas.toDataURL('image/png')).then(
+              (res) => res.arrayBuffer(),
+            )
+
             image = await mergedPdf.embedPng(pngData)
           }
-          
+
           // Calculate dimensions to fit image within A4 while maintaining aspect ratio
           const { width: imgWidth, height: imgHeight } = image
           const pageWidth = a4Page.getWidth()
           const pageHeight = a4Page.getHeight()
-          
+
           // Calculate scaling factors
           const widthScale = pageWidth / imgWidth
           const heightScale = pageHeight / imgHeight
-          
+
           // Use the smaller scaling factor to ensure the image fits
           const scale = Math.min(widthScale, heightScale) * 0.9 // 90% of the page to add margins
-          
+
           // Calculate dimensions after scaling
           const scaledWidth = imgWidth * scale
           const scaledHeight = imgHeight * scale
-          
+
           // Calculate position to center the image
           const x = (pageWidth - scaledWidth) / 2
           const y = (pageHeight - scaledHeight) / 2
-          
+
           // Draw the image on the page
           a4Page.drawImage(image, {
             x,
@@ -395,16 +406,23 @@ export default function PDFManager() {
             width: scaledWidth,
             height: scaledHeight,
           })
-          
+
           // Apply rotation if needed
           const rotation = pageRotations[pageData.id] || 0
           if (rotation !== 0) {
             let pdfRotation
             switch (rotation) {
-              case 90: pdfRotation = degrees(90); break;
-              case 180: pdfRotation = degrees(180); break;
-              case 270: pdfRotation = degrees(270); break;
-              default: pdfRotation = degrees(0);
+              case 90:
+                pdfRotation = degrees(90)
+                break
+              case 180:
+                pdfRotation = degrees(180)
+                break
+              case 270:
+                pdfRotation = degrees(270)
+                break
+              default:
+                pdfRotation = degrees(0)
             }
             a4Page.setRotation(pdfRotation)
           }
@@ -412,17 +430,26 @@ export default function PDFManager() {
           // Handle PDF file
           const arrayBuffer = await pageData.file.arrayBuffer()
           const pdf = await PDFDocument.load(arrayBuffer)
-          const copiedPage = await mergedPdf.copyPages(pdf, [pageData.pageIndex])
+          const copiedPage = await mergedPdf.copyPages(pdf, [
+            pageData.pageIndex,
+          ])
 
           // Apply rotation if needed
           const rotation = pageRotations[pageData.id] || 0
           if (rotation !== 0) {
             let pdfRotation
             switch (rotation) {
-              case 90: pdfRotation = degrees(90); break;
-              case 180: pdfRotation = degrees(180); break;
-              case 270: pdfRotation = degrees(270); break;
-              default: pdfRotation = degrees(0);
+              case 90:
+                pdfRotation = degrees(90)
+                break
+              case 180:
+                pdfRotation = degrees(180)
+                break
+              case 270:
+                pdfRotation = degrees(270)
+                break
+              default:
+                pdfRotation = degrees(0)
             }
             copiedPage[0].setRotation(pdfRotation)
           }
@@ -440,7 +467,9 @@ export default function PDFManager() {
       setCompressedSizeMB(null)
     } catch (error) {
       console.error('Erro ao mesclar arquivos:', error)
-      alert('Ocorreu um erro ao mesclar os arquivos. Por favor, tente novamente.')
+      alert(
+        'Ocorreu um erro ao mesclar os arquivos. Por favor, tente novamente.',
+      )
     }
   }
 
@@ -455,16 +484,18 @@ export default function PDFManager() {
     try {
       // Step 1: Create a merged PDF with both PDFs and images
       const mergedPdf = await PDFDocument.create()
-      
+
       for (const pageData of pages) {
         if (pageData.isImage) {
           // Handle image file
-          const imageBytes = await fetch(pageData.previewUrl).then(res => res.arrayBuffer())
-          
+          const imageBytes = await fetch(pageData.previewUrl).then((res) =>
+            res.arrayBuffer(),
+          )
+
           // Create a new page with appropriate dimensions
           let image
           let imagePage
-          
+
           if (pageData.file.type === 'image/jpeg') {
             image = await mergedPdf.embedJpg(imageBytes)
           } else if (pageData.file.type === 'image/png') {
@@ -476,23 +507,24 @@ export default function PDFManager() {
               img.onload = resolve
               img.src = pageData.previewUrl
             })
-            
+
             const canvas = document.createElement('canvas')
             canvas.width = img.width
             canvas.height = img.height
             const ctx = canvas.getContext('2d')
             ctx.drawImage(img, 0, 0)
-            
-            const pngData = await fetch(canvas.toDataURL('image/png'))
-              .then(res => res.arrayBuffer())
-            
+
+            const pngData = await fetch(canvas.toDataURL('image/png')).then(
+              (res) => res.arrayBuffer(),
+            )
+
             image = await mergedPdf.embedPng(pngData)
           }
-          
+
           // Create a page with the image dimensions
           const { width, height } = image
           imagePage = mergedPdf.addPage([width, height])
-          
+
           // Draw the image on the page
           imagePage.drawImage(image, {
             x: 0,
@@ -504,7 +536,9 @@ export default function PDFManager() {
           // Handle PDF file
           const arrayBuffer = await pageData.file.arrayBuffer()
           const pdf = await PDFDocument.load(arrayBuffer)
-          const copiedPage = await mergedPdf.copyPages(pdf, [pageData.pageIndex])
+          const copiedPage = await mergedPdf.copyPages(pdf, [
+            pageData.pageIndex,
+          ])
           mergedPdf.addPage(copiedPage[0])
         }
       }
@@ -555,24 +589,24 @@ export default function PDFManager() {
     try {
       // Show loading state
       setCompressing(true)
-      
+
       // Dynamically import JSZip
       const JSZipModule = await import('jszip')
       const JSZip = JSZipModule.default
       const zip = new JSZip()
-      
+
       // Set image quality and mime type based on format
       const quality = format === 'jpg' ? 0.9 : 1.0
       const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
       const fileExtension = format === 'jpg' ? 'jpg' : 'png'
-      
+
       // Process each page
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i]
-        
+
         // Create a high-quality image from the page
         let imageData
-        
+
         if (page.isImage) {
           // For image pages, use the existing preview but apply rotation
           const img = new Image()
@@ -580,29 +614,29 @@ export default function PDFManager() {
             img.onload = resolve
             img.src = page.previewUrl
           })
-          
+
           // Create a canvas with the same dimensions
           const canvas = document.createElement('canvas')
-          
+
           // Determine if we need to swap dimensions for 90/270 degree rotations
           const rotation = pageRotations[page.id] || 0
           const swapDimensions = rotation === 90 || rotation === 270
-          
+
           canvas.width = swapDimensions ? img.height : img.width
           canvas.height = swapDimensions ? img.width : img.height
-          
+
           const ctx = canvas.getContext('2d')
           ctx.save()
-          
+
           // Apply rotation around the center
           ctx.translate(canvas.width / 2, canvas.height / 2)
           ctx.rotate((rotation * Math.PI) / 180)
           ctx.translate(-img.width / 2, -img.height / 2)
-          
+
           // Draw the image
           ctx.drawImage(img, 0, 0)
           ctx.restore()
-          
+
           // Get the image data
           imageData = canvas.toDataURL(mimeType, quality)
         } else {
@@ -610,47 +644,50 @@ export default function PDFManager() {
           const arrayBuffer = await page.file.arrayBuffer()
           const pdf = await getDocument({ data: arrayBuffer }).promise
           const pdfPage = await pdf.getPage(page.pageIndex + 1)
-          
+
           // Use a higher scale for better quality
           const scale = 2.0
           const viewport = pdfPage.getViewport({ scale })
-          
+
           // Create a canvas with the right dimensions
           const canvas = document.createElement('canvas')
           const ctx = canvas.getContext('2d')
           canvas.width = viewport.width
           canvas.height = viewport.height
-          
+
           // Render the PDF page to the canvas
           await pdfPage.render({
             canvasContext: ctx,
-            viewport
+            viewport,
           }).promise
-          
+
           // Apply rotation if needed
           if (pageRotations[page.id]) {
             const rotation = pageRotations[page.id]
-            
+
             // Create a new canvas for the rotated image
             const rotatedCanvas = document.createElement('canvas')
             const rotatedCtx = rotatedCanvas.getContext('2d')
-            
+
             // Swap dimensions for 90/270 degree rotations
             const swapDimensions = rotation === 90 || rotation === 270
             rotatedCanvas.width = swapDimensions ? canvas.height : canvas.width
             rotatedCanvas.height = swapDimensions ? canvas.width : canvas.height
-            
+
             // Rotate around center
-            rotatedCtx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2)
+            rotatedCtx.translate(
+              rotatedCanvas.width / 2,
+              rotatedCanvas.height / 2,
+            )
             rotatedCtx.rotate((rotation * Math.PI) / 180)
             rotatedCtx.drawImage(
-              canvas, 
-              -canvas.width / 2, 
-              -canvas.height / 2, 
-              canvas.width, 
-              canvas.height
+              canvas,
+              -canvas.width / 2,
+              -canvas.height / 2,
+              canvas.width,
+              canvas.height,
             )
-            
+
             // Use the rotated canvas
             imageData = rotatedCanvas.toDataURL(mimeType, quality)
           } else {
@@ -658,26 +695,26 @@ export default function PDFManager() {
             imageData = canvas.toDataURL(mimeType, quality)
           }
         }
-        
+
         // Convert base64 to binary
         const binary = atob(imageData.split(',')[1])
         const array = new Uint8Array(binary.length)
         for (let j = 0; j < binary.length; j++) {
           array[j] = binary.charCodeAt(j)
         }
-        
+
         // Add to zip with padding for page numbers (e.g., page-01.jpg instead of page-1.jpg)
         const pageNum = String(i + 1).padStart(2, '0')
         zip.file(`page-${pageNum}.${fileExtension}`, array, { binary: true })
-        
+
         // Update progress (optional)
         console.log(`Processed page ${i + 1} of ${pages.length}`)
       }
-      
+
       // Generate and download the zip file
       const zipBlob = await zip.generateAsync({ type: 'blob' })
       const zipUrl = URL.createObjectURL(zipBlob)
-      
+
       // Create download link
       const a = document.createElement('a')
       a.href = zipUrl
@@ -685,175 +722,28 @@ export default function PDFManager() {
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      
+
       // Clean up
       URL.revokeObjectURL(zipUrl)
-      
-      console.log(`✅ Successfully converted ${pages.length} pages to ${format.toUpperCase()}`)
+
+      console.log(
+        `✅ Successfully converted ${
+          pages.length
+        } pages to ${format.toUpperCase()}`,
+      )
     } catch (error) {
       console.error(`Error converting pages to ${format}:`, error)
-      alert(`An error occurred while converting pages to ${format}. Please check the console for details.`)
+      alert(
+        `An error occurred while converting pages to ${format}. Please check the console for details.`,
+      )
     } finally {
       setCompressing(false)
     }
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   return (
-    <Card className='max-w-5xl mx-auto mt-10 p-6 space-y-6'>
+    <Card className='max-w-6xl mx-auto mt-10 p-6 space-y-6'>
       <CardContent className='space-y-6'>
- 
-
         {/* Lista de páginas */}
         <div className='space-y-4'>
           <div>
@@ -993,25 +883,33 @@ export default function PDFManager() {
                   {compressing ? (
                     <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500'></div>
                   ) : (
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="48" 
-                      height="48" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='48'
+                      height='48'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
                       className={`${
                         pages.length
                           ? 'text-orange-500 hover:text-orange-600'
                           : 'text-gray-300'
                       } transition`}
                     >
-                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <text x="8" y="17" fontSize="5" fontWeight="bold" fill="currentColor">JPG</text>
+                      <path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' />
+                      <polyline points='14 2 14 8 20 8' />
+                      <text
+                        x='8'
+                        y='17'
+                        fontSize='5'
+                        fontWeight='bold'
+                        fill='currentColor'
+                      >
+                        JPG
+                      </text>
                     </svg>
                   )}
                   <span
@@ -1032,25 +930,33 @@ export default function PDFManager() {
                   className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
                   type='button'
                 >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="48" 
-                    height="48" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='48'
+                    height='48'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
                     className={`${
                       pages.length
                         ? 'text-blue-500 hover:text-blue-600'
                         : 'text-gray-300'
                     } transition`}
                   >
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <text x="8" y="17" fontSize="5" fontWeight="bold" fill="currentColor">PNG</text>
+                    <path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' />
+                    <polyline points='14 2 14 8 20 8' />
+                    <text
+                      x='8'
+                      y='17'
+                      fontSize='5'
+                      fontWeight='bold'
+                      fill='currentColor'
+                    >
+                      PNG
+                    </text>
                   </svg>
                   <span
                     className={`${
@@ -1113,12 +1019,12 @@ export default function PDFManager() {
                   onClick={() => {
                     // Limpar todos os estados relacionados aos PDFs
                     // Revogar URLs de objetos para liberar memória
-                    pages.forEach(page => {
+                    pages.forEach((page) => {
                       if (page.isImage) {
-                        URL.revokeObjectURL(page.previewUrl);
+                        URL.revokeObjectURL(page.previewUrl)
                       }
-                    });
-                    
+                    })
+
                     setPages([])
                     setFiles([])
                     setMergedPdfUrl(null)
@@ -1197,18 +1103,26 @@ export default function PDFManager() {
                   items={pages.map((p) => p.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className='grid grid-cols-2 md:grid-cols-4 gap-12'>
-                    {pages.map((page) => (
-                      <SortableThumbnail
-                        key={page.id}
-                        id={page.id}
-                        previewUrl={page.previewUrl}
-                        onDelete={handleDeletePage}
-                        rotation={pageRotations[page.id] || 0}
-                        isSelected={selectedPageId === page.id}
-                        onSelect={handleSelectPage}
-                      />
-                    ))}
+                  <div className='flex justify-center items-center '>
+                    {loadingPdfs ? (
+                      <div className='max-w-75 max-h-75 ' >
+                        <Spin />
+                      </div>
+                    ) : (
+                      <div className='grid grid-cols-2 md:grid-cols-4 gap-12'>
+                        {pages.map((page) => (
+                          <SortableThumbnail
+                            key={page.id}
+                            id={page.id}
+                            previewUrl={page.previewUrl}
+                            onDelete={handleDeletePage}
+                            rotation={pageRotations[page.id] || 0}
+                            isSelected={selectedPageId === page.id}
+                            onSelect={handleSelectPage}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </SortableContext>
               </DndContext>

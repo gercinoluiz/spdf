@@ -3,6 +3,241 @@ import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { PDFDocument, degrees } from 'pdf-lib'
+/**
+ * Handles the POST request for PDF compression and optional rotation.
+ * 
+ * @param req - The incoming HTTP request containing form data with PDF file, optional rotations, and page order
+ * @returns A NextResponse with either the compressed PDF or an error message
+ * 
+ * @throws {Error} If file processing fails or Ghostscript compression encounters issues
+ */export async function POST(req: Request) {
+  try {
+    const formData = await req.formData()
+    const file = formData.get('file') as File // Receives only one merged file
+    const rotationsJson = formData.get('rotations') as string
+    const pageOrderJson = formData.get('pageOrder') as string
+    const pageOrder: string[] = pageOrderJson ? JSON.parse(pageOrderJson) : []
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'Nenhum arquivo enviado' }, // No file sent
+        { status: 400 },
+      )
+    }
+
+    const tempFolder = path.join(process.cwd(), 'public')
+    if (!fs.existsSync(tempFolder)) {
+      fs.mkdirSync(tempFolder)
+    }
+
+    // Save the received PDF temporarily
+    const arrayBuffer = await file.arrayBuffer()
+    const tempInputPath = path.join(tempFolder, `input_${Date.now()}.pdf`)
+    fs.writeFileSync(tempInputPath, Buffer.from(arrayBuffer))
+
+    console.log('📥 PDF recebido salvo:', tempInputPath) // PDF received saved
+
+    const tempCompressedPath = path.join(
+      tempFolder,
+      `compressed_${Date.now()}.pdf`,
+    )
+
+    // Compress the PDF
+    await runGhostscript(tempInputPath, tempCompressedPath)
+
+    let finalPdfBuffer
+
+    // If we have rotation data, apply it after compression
+    if (rotationsJson) {
+      try {
+        const rotations = JSON.parse(rotationsJson)
+        const tempRotatedPath = path.join(
+          tempFolder,
+          `rotated_${Date.now()}.pdf`,
+        )
+
+        // Apply rotations to the compressed PDF
+        const compressedBuffer = fs.readFileSync(tempCompressedPath)
+        const pdfDoc = await PDFDocument.load(compressedBuffer)
+
+        // Apply rotations to each page
+        const pages = pdfDoc.getPages()
+
+        for (let i = 0; i < pages.length; i++) {
+          const page = pages[i]
+          const pageId = pageOrder[i] // <- now the rotation matches the correct order
+          const rotation = rotations[pageId] || 0
+
+          if (rotation !== 0) {
+            let pdfRotation
+            switch (rotation) {
+              case 90:
+                pdfRotation = degrees(90)
+                break
+              case 180:
+                pdfRotation = degrees(180)
+                break
+              case 270:
+                pdfRotation = degrees(270)
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+
+            page.setRotation(pdfRotation)
+          }
+        }
+
+        // Save the PDF with applied rotations
+        const rotatedPdfBytes = await pdfDoc.save()
+        fs.writeFileSync(tempRotatedPath, Buffer.from(rotatedPdfBytes))
+
+        finalPdfBuffer = fs.readFileSync(tempRotatedPath)
+
+        // Clean up additional temporary file
+        fs.unlinkSync(tempRotatedPath)
+      } catch (rotationError) {
+        console.error('Erro ao aplicar rotações:', rotationError) // Error applying rotations
+        // In case of rotation errors, use the compressed PDF only
+        finalPdfBuffer = fs.readFileSync(tempCompressedPath)
+      }
+    } else {
+      finalPdfBuffer = fs.readFileSync(tempCompressedPath)
+    }
+
+    console.log('📦 Processamento finalizado!') // Processing finished
+
+    // Clean up temporary files
+    fs.unlinkSync(tempInputPath)
+    fs.unlinkSync(tempCompressedPath)
+
+    return new Response(finalPdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+      },
+    })
+  } catch (error) {
+    console.error('Erro durante processamento:', error) // Error during processing
+    return NextResponse.json(
+      { error: 'Falha ao processar PDF' }, // Failed to process PDF
+      { status: 500 },
+    )
+  }
+}
+export async function POST(req: Request) {
+  try {
+    const formData = await req.formData()
+    const file = formData.get('file') as File // Receives only one merged file
+    const rotationsJson = formData.get('rotations') as string
+    const pageOrderJson = formData.get('pageOrder') as string
+    const pageOrder: string[] = pageOrderJson ? JSON.parse(pageOrderJson) : []
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'Nenhum arquivo enviado' }, // No file sent
+        { status: 400 },
+      )
+    }
+
+    const tempFolder = path.join(process.cwd(), 'public')
+    if (!fs.existsSync(tempFolder)) {
+      fs.mkdirSync(tempFolder)
+    }
+
+    // Save the received PDF temporarily
+    const arrayBuffer = await file.arrayBuffer()
+    const tempInputPath = path.join(tempFolder, `input_${Date.now()}.pdf`)
+    fs.writeFileSync(tempInputPath, Buffer.from(arrayBuffer))
+
+    console.log('📥 PDF recebido salvo:', tempInputPath) // PDF received saved
+
+    const tempCompressedPath = path.join(
+      tempFolder,
+      `compressed_${Date.now()}.pdf`,
+    )
+
+    // Compress the PDF
+    await runGhostscript(tempInputPath, tempCompressedPath)
+
+    let finalPdfBuffer
+
+    // If we have rotation data, apply it after compression
+    if (rotationsJson) {
+      try {
+        const rotations = JSON.parse(rotationsJson)
+        const tempRotatedPath = path.join(
+          tempFolder,
+          `rotated_${Date.now()}.pdf`,
+        )
+
+        // Apply rotations to the compressed PDF
+        const compressedBuffer = fs.readFileSync(tempCompressedPath)
+        const pdfDoc = await PDFDocument.load(compressedBuffer)
+
+        // Apply rotations to each page
+        const pages = pdfDoc.getPages()
+
+        for (let i = 0; i < pages.length; i++) {
+          const page = pages[i]
+          const pageId = pageOrder[i] // <- now the rotation matches the correct order
+          const rotation = rotations[pageId] || 0
+
+          if (rotation !== 0) {
+            let pdfRotation
+            switch (rotation) {
+              case 90:
+                pdfRotation = degrees(90)
+                break
+              case 180:
+                pdfRotation = degrees(180)
+                break
+              case 270:
+                pdfRotation = degrees(270)
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+
+            page.setRotation(pdfRotation)
+          }
+        }
+
+        // Save the PDF with applied rotations
+        const rotatedPdfBytes = await pdfDoc.save()
+        fs.writeFileSync(tempRotatedPath, Buffer.from(rotatedPdfBytes))
+
+        finalPdfBuffer = fs.readFileSync(tempRotatedPath)
+
+        // Clean up additional temporary file
+        fs.unlinkSync(tempRotatedPath)
+      } catch (rotationError) {
+        console.error('Erro ao aplicar rotações:', rotationError) // Error applying rotations
+        // In case of rotation errors, use the compressed PDF only
+        finalPdfBuffer = fs.readFileSync(tempCompressedPath)
+      }
+    } else {
+      finalPdfBuffer = fs.readFileSync(tempCompressedPath)
+    }
+
+    console.log('📦 Processamento finalizado!') // Processing finished
+
+    // Clean up temporary files
+    fs.unlinkSync(tempInputPath)
+    fs.unlinkSync(tempCompressedPath)
+
+    return new Response(finalPdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+      },
+    })
+  } catch (error) {
+    console.error('Erro durante processamento:', error) // Error during processing
+    return NextResponse.json(
+      { error: 'Falha ao processar PDF' }, // Failed to process PDF
+      { status: 500 },
+    )
+  }
+}
 
 export const config = {
   api: {
