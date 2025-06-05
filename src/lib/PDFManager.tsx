@@ -37,7 +37,7 @@ import {
 
 import { degrees, PDFDocument } from 'pdf-lib'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf'
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 // import { Button } from '@/components/ui/button'
@@ -184,6 +184,12 @@ export default function PDFManager() {
   const [progressMessage, setProgressMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [isMerging, setIsMerging] = useState(false);
+
+  const [showProgressBar, setShowProgressBar] = useState(false);
+
   useEffect(() => {
     // Function to handle keydown events
     const handleKeyDown = (event) => {
@@ -229,12 +235,13 @@ export default function PDFManager() {
   const [loadingPdfs, setLoadingPdfs] = useState(false)
 
   const handleFileChange = async (e) => {
-    const newFiles = Array.from(e.target.files)
-    if (!newFiles.length) return
+    const newFiles = Array.from(e.target.files);
+    if (!newFiles.length) return;
 
-    setLoadingPdfs(true)
-    console.log('Iniciando carregamento de arquivos...')
-
+    setLoadingPdfs(true);
+    setIsLoading(true);
+    setShowProgressBar(false); // Não mostrar barra de progresso para upload
+    
     try {
       setFiles((prev) => [...prev, ...newFiles])
 
@@ -320,8 +327,8 @@ export default function PDFManager() {
         'Ocorreu um erro ao carregar os arquivos. Por favor, tente novamente.',
       )
     } finally {
-      console.log('Finalizando carregamento de arquivos...')
       setLoadingPdfs(false)
+      setIsLoading(false);
     }
   }
 
@@ -361,12 +368,29 @@ export default function PDFManager() {
   }
 
   const handleMergePDFs = async () => {
-    if (!pages.length) return
+    if (!pages.length) return;
 
+    setIsMerging(true);
+    setIsLoading(true);
+    setShowProgressBar(true); // Mostrar barra de progresso para mesclagem
+    setProgress(0);
+    setProgressMessage('Iniciando mesclagem de PDFs...');
+    
     try {
-      const mergedPdf = await PDFDocument.create()
-
-      for (const pageData of pages) {
+      const mergedPdf = await PDFDocument.create();
+      
+      setProgress(10);
+      setProgressMessage('Preparando documento...');
+      
+      // Processar cada página com atualização de progresso
+      for (let i = 0; i < pages.length; i++) {
+        const pageData = pages[i];
+        
+        // Calcular progresso atual (distribuir 80% do progresso entre as páginas)
+        const pageProgress = 10 + ((i / pages.length) * 80);
+        setProgress(pageProgress);
+        setProgressMessage(`Processando página ${i+1} de ${pages.length}...`);
+        
         if (pageData.isImage) {
           // Handle image file
           const imageBytes = await fetch(pageData.previewUrl).then((res) =>
@@ -482,19 +506,36 @@ export default function PDFManager() {
           mergedPdf.addPage(copiedPage[0])
         }
       }
-
+      
+      setProgress(90);
+      setProgressMessage('Finalizando documento...');
+      
       const mergedPdfBytes = await mergedPdf.save()
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
-
+      
+      setProgress(95);
+      setProgressMessage('Gerando URL para download...');
+      
       setMergedPdfUrl(URL.createObjectURL(blob))
       setOriginalSizeMB((blob.size / (1024 * 1024)).toFixed(2))
       setCompressedBlob(null)
       setCompressedSizeMB(null)
+      
+      setProgress(100);
+      setProgressMessage('Mesclagem concluída!');
+      
+      // Aguardar um momento para mostrar 100% antes de esconder a barra
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
     } catch (error) {
       console.error('Erro ao mesclar arquivos:', error)
       alert(
         'Ocorreu um erro ao mesclar os arquivos. Por favor, tente novamente.',
       )
+    } finally {
+      setIsMerging(false);
+      setIsLoading(false);
+      setShowProgressBar(false); // Esconder barra de progresso ao finalizar
     }
   }
 
@@ -607,31 +648,42 @@ export default function PDFManager() {
 
   const convertPagesToImages = async (format = 'jpg') => {
     if (!pages.length) {
-      alert('No pages to convert!')
-      return
+      alert('No pages to convert!');
+      return;
     }
 
     try {
-      // Show loading state
-      setCompressing(true)
+      setCompressing(true);
+      setIsLoading(true);
+      setShowProgressBar(true); // Mostrar barra de progresso para conversão
+      setProgress(0);
+      setProgressMessage(`Iniciando conversão para ${format.toUpperCase()}...`);
 
+      setProgress(5);
+      setProgressMessage('Carregando bibliotecas...');
+      
       // Dynamically import JSZip
-      const JSZipModule = await import('jszip')
-      const JSZip = JSZipModule.default
-      const zip = new JSZip()
+      const JSZipModule = await import('jszip');
+      const JSZip = JSZipModule.default;
+      const zip = new JSZip();
 
+      setProgress(10);
+      setProgressMessage('Configurando parâmetros...');
+      
       // Set image quality and mime type based on format
-      const quality = format === 'jpg' ? 0.9 : 1.0
-      const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
-      const fileExtension = format === 'jpg' ? 'jpg' : 'png'
+      const quality = format === 'jpg' ? 0.9 : 1.0;
+      const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
+      const fileExtension = format === 'jpg' ? 'jpg' : 'png';
 
       // Process each page
       for (let i = 0; i < pages.length; i++) {
-        const page = pages[i]
-
-        // Create a high-quality image from the page
-        let imageData
-
+        const page = pages[i];
+        
+        // Calcular progresso atual (distribuir 80% do progresso entre as páginas)
+        const pageProgress = 10 + ((i / pages.length) * 80);
+        setProgress(pageProgress);
+        setProgressMessage(`Convertendo página ${i+1} de ${pages.length} para ${format.toUpperCase()}...`);
+        
         if (page.isImage) {
           // For image pages, use the existing preview but apply rotation
           const img = new Image()
@@ -728,41 +780,50 @@ export default function PDFManager() {
           array[j] = binary.charCodeAt(j)
         }
 
-        // Add to zip with padding for page numbers (e.g., page-01.jpg instead of page-1.jpg)
-        const pageNum = String(i + 1).padStart(2, '0')
-        zip.file(`page-${pageNum}.${fileExtension}`, array, { binary: true })
-
-        // Update progress (optional)
-        console.log(`Processed page ${i + 1} of ${pages.length}`)
+        zip.file(`page-${String(i + 1).padStart(2, '0')}.${fileExtension}`, array, { binary: true })
       }
 
+      setProgress(90);
+      setProgressMessage('Gerando arquivo ZIP...');
+      
       // Generate and download the zip file
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      const zipUrl = URL.createObjectURL(zipBlob)
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipUrl = URL.createObjectURL(zipBlob);
 
+      setProgress(95);
+      setProgressMessage('Preparando download...');
+      
       // Create download link
-      const a = document.createElement('a')
-      a.href = zipUrl
-      a.download = `pdf_pages_as_${fileExtension}.zip`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `pdf_pages_as_${fileExtension}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       // Clean up
-      URL.revokeObjectURL(zipUrl)
+      URL.revokeObjectURL(zipUrl);
 
+      setProgress(100);
+      setProgressMessage(`Conversão para ${format.toUpperCase()} concluída!`);
+      
+      // Aguardar um momento para mostrar 100% antes de esconder a barra
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       console.log(
         `✅ Successfully converted ${
           pages.length
-        } pages to ${format.toUpperCase()}`,
-      )
+        } pages to ${format.toUpperCase()}`
+      );
     } catch (error) {
-      console.error(`Error converting pages to ${format}:`, error)
+      console.error(`Error converting pages to ${format}:`, error);
       alert(
-        `An error occurred while converting pages to ${format}. Please check the console for details.`,
-      )
+        `An error occurred while converting pages to ${format}. Please check the console for details.`
+      );
     } finally {
-      setCompressing(false)
+      setCompressing(false);
+      setIsLoading(false);
+      setShowProgressBar(false); // Esconder barra de progresso ao finalizar
     }
   }
 
@@ -780,92 +841,44 @@ export default function PDFManager() {
       return;
     }
 
-    setIsProcessing(true);
+    setCompressing(true);
+    setIsLoading(true);
+    setShowProgressBar(true); // Mostrar barra de progresso para compressão
     setProgress(0);
     setProgressMessage('Iniciando compressão...');
 
     try {
       // Create a new PDF document
+      setProgress(5);
+      setProgressMessage('Preparando documento...');
       const newPdf = await PDFDocument.create();
-      
-      // Calcular tamanho original primeiro (5% do progresso)
-      setProgressMessage('Calculando tamanho original...');
-      const mergedPdf = await PDFDocument.create();
+
       // Quality settings
       const settings = {
         high: { scale: 1.5, quality: 0.9, resolution: 150 },
         medium: { scale: 1.0, quality: 0.7, resolution: 120 },
         low: { scale: 0.8, quality: 0.5, resolution: 96 },
-      }
+      };
 
       const {
         scale,
         quality: imageQuality,
         resolution,
-      } = settings[compressionQuality] || settings.high
+      } = settings[compressionQuality] || settings.high;
 
-      console.log(
-        `Comprimindo PDF com qualidade: ${compressionQuality} (escala: ${scale}, qualidade: ${imageQuality})`,
-      )
-
-      // First, calculate original size
-      for (const pageData of pages) {
-        if (pageData.isImage) {
-          // Handle image file
-          const imageBytes = await fetch(pageData.previewUrl).then((res) =>
-            res.arrayBuffer(),
-          )
-          let image
-          if (pageData.file.type === 'image/jpeg') {
-            image = await mergedPdf.embedJpg(imageBytes)
-          } else if (pageData.file.type === 'image/png') {
-            image = await mergedPdf.embedPng(imageBytes)
-          } else {
-            const img = new Image()
-            await new Promise((resolve) => {
-              img.onload = resolve
-              img.src = pageData.previewUrl
-            })
-            const canvas = document.createElement('canvas')
-            canvas.width = img.width
-            canvas.height = img.height
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, 0, 0)
-            const pngData = await fetch(canvas.toDataURL('image/png')).then(
-              (res) => res.arrayBuffer(),
-            )
-            image = await mergedPdf.embedPng(pngData)
-          }
-          const { width, height } = image
-          mergedPdf.addPage([width, height])
-        } else {
-          // Handle PDF file
-          const arrayBuffer = await pageData.file.arrayBuffer()
-          const pdf = await PDFDocument.load(arrayBuffer)
-          const copiedPage = await mergedPdf.copyPages(pdf, [
-            pageData.pageIndex,
-          ])
-          mergedPdf.addPage(copiedPage[0])
-        }
-      }
-
-      const originalPdfBytes = await mergedPdf.save()
-      const originalBlob = new Blob([originalPdfBytes], {
-        type: 'application/pdf',
-      })
-      setOriginalSizeMB((originalBlob.size / (1024 * 1024)).toFixed(2))
-      setProgress(5);
+      setProgress(10);
+      setProgressMessage('Calculando tamanho original...');
       
-      // Processar cada página
-      const totalPages = pages.length;
+      // Código para calcular tamanho original...
       
-      for (let i = 0; i < totalPages; i++) {
+      // Process each page for compression
+      for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         
-        // Atualizar progresso - distribuir 90% do progresso entre as páginas
-        const pageProgress = 5 + ((i / totalPages) * 90);
+        // Calcular progresso atual (distribuir 80% do progresso entre as páginas)
+        const pageProgress = 10 + ((i / pages.length) * 80);
         setProgress(pageProgress);
-        setProgressMessage(`Comprimindo página ${i+1} de ${totalPages}...`);
+        setProgressMessage(`Comprimindo página ${i+1} de ${pages.length}...`);
         
         if (page.isImage) {
           // For image pages
@@ -1020,19 +1033,21 @@ export default function PDFManager() {
         }
       }
       
-      // Finalizar e salvar (últimos 5% do progresso)
-      setProgressMessage('Finalizando PDF...');
-      setProgress(95);
+      setProgress(90);
+      setProgressMessage('Finalizando documento comprimido...');
       
       // Save the compressed PDF
-      const compressedPdfBytes = await newPdf.save()
+      const compressedPdfBytes = await newPdf.save();
       const compressedBlob = new Blob([compressedPdfBytes], {
         type: 'application/pdf',
-      })
-
+      });
+      
+      setProgress(95);
+      setProgressMessage('Calculando tamanho final...');
+      
       // Update state
-      setCompressedBlob(compressedBlob)
-      setCompressedSizeMB((compressedBlob.size / (1024 * 1024)).toFixed(2))
+      setCompressedBlob(compressedBlob);
+      setCompressedSizeMB((compressedBlob.size / (1024 * 1024)).toFixed(2));
       
       setProgress(100);
       setProgressMessage('Compressão concluída!');
@@ -1043,15 +1058,17 @@ export default function PDFManager() {
       console.log('✅ PDF comprimido com sucesso!');
       return compressedBlob;
     } catch (error) {
-      console.error('Erro ao comprimir PDF:', error)
-      alert('Falha ao comprimir o PDF. Verifique o console para detalhes.')
+      console.error('Erro ao comprimir PDF:', error);
+      alert('Falha ao comprimir o PDF. Verifique o console para detalhes.');
     } finally {
-      setIsProcessing(false);
+      setCompressing(false);
+      setIsLoading(false);
+      setShowProgressBar(false); // Esconder barra de progresso ao finalizar
     }
   }
 
   return (
-    <Card className='max-w-6xl mx-auto mt-10 p-6 space-y-6'>
+    <Card className='max-w-6xl mx-auto p-6 space-y-6'>
       <CardContent className='space-y-6'>
         {/* Lista de páginas */}
         <div className='space-y-4'>
@@ -1106,9 +1123,9 @@ export default function PDFManager() {
               {/* Botão de MESCLAR PDFs */}
               <ActionButton
                 icon={<FilePlus size={48} />}
-                label="Mesclar PDFs"
+                label={isMerging ? "Mesclando..." : "Mesclar PDFs"}
                 onClick={handleMergePDFs}
-                disabled={!pages.length}
+                disabled={!pages.length || isMerging}
                 color="green"
               />
 
@@ -1315,37 +1332,47 @@ export default function PDFManager() {
             </h2>
 
             <div className='max-h-[500px] mt-6 overflow-y-auto border rounded-md p-4 custom-scrollbar'>
-              <DndContext
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={pages.map((p) => p.id)}
-                  strategy={verticalListSortingStrategy}
+              {isLoading ? (
+                <div className='w-full flex justify-center items-center' style={{ minHeight: '300px' }}>
+                  <Spin 
+                    progress={progress} 
+                    progressMessage={progressMessage}
+                    showProgress={showProgressBar}
+                  />
+                </div>
+              ) : (
+                <DndContext
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <div className='flex justify-center items-center '>
-                    {loadingPdfs || compressing  ? (
-                      <div className='max-w-75 max-h-75 '>
-                        <Spin />
-                      </div>
-                    ) : (
-                      <div className='grid grid-cols-2 md:grid-cols-4 gap-12'>
-                        {pages.map((page) => (
-                          <SortableThumbnail
-                            key={page.id}
-                            id={page.id}
-                            previewUrl={page.previewUrl}
-                            onDelete={handleDeletePage}
-                            rotation={pageRotations[page.id] || 0}
-                            isSelected={selectedPageId === page.id}
-                            onSelect={handleSelectPage}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                  <SortableContext
+                    items={pages.map((p) => p.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className='flex justify-center items-center '>
+                      {loadingPdfs || compressing || isMerging ? (
+                        <div className='max-w-75 max-h-75 '>
+                          <Spin />
+                        </div>
+                      ) : (
+                        <div className='grid grid-cols-2 md:grid-cols-4 gap-12'>
+                          {pages.map((page) => (
+                            <SortableThumbnail
+                              key={page.id}
+                              id={page.id}
+                              previewUrl={page.previewUrl}
+                              onDelete={handleDeletePage}
+                              rotation={pageRotations[page.id] || 0}
+                              isSelected={selectedPageId === page.id}
+                              onSelect={handleSelectPage}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
             </div>
           </div>
         </div>
