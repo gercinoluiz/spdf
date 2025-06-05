@@ -3,50 +3,28 @@
 
 'use client'
 import {
-  Download,
-  FilePlus,
-  RotateCcw,
-  RotateCw,
-  Shrink,
-  Trash2,
   UploadCloud,
+  FilePlus,
+  Download,
+  Trash2,
+  Shrink,
+  RotateCw,
+  RotateCcw,
 } from 'lucide-react'
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-/**
- * Represents a sortable thumbnail component for PDF page previews.
- * 
- * @param {Object} props - The component properties
- * @param {string} props.id - Unique identifier for the thumbnail
- * @param {string} props.previewUrl - URL of the page preview image
- * @param {Function} props.onDelete - Callback function for deleting the thumbnail
- * @param {number} [props.rotation=0] - Rotation angle of the thumbnail
- * @param {boolean} props.isSelected - Indicates if the thumbnail is currently selected
- * @param {Function} props.onSelect - Callback function for selecting the thumbnail
- * 
- * @returns {React.ReactElement} A draggable and interactive PDF page thumbnail
- */
+import Lottie from 'lottie-react'
 
 // import logo from '../../assets/logo.png'
 
-import { degrees, PDFDocument } from 'pdf-lib'
+import { useState, useEffect } from 'react'
+import { PDFDocument, degrees } from 'pdf-lib'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf'
-import { useEffect, useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 // import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 // import { Label } from '@/components/ui/label'
 
-import ActionButton from '@/components/actionButton'
-import Spin from '@/components/spin'
-import { closestCenter, DndContext } from '@dnd-kit/core'
+import { DndContext, closestCenter } from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
@@ -55,6 +33,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Image from 'next/image'
+import Spin from '@/components/spin'
 
 // Configurar worker do PDF.js
 GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`
@@ -179,10 +158,6 @@ export default function PDFManager() {
 
   const [selectedPageId, setSelectedPageId] = useState(null)
   const [pageRotations, setPageRotations] = useState({})
-
-  const [progress, setProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     // Function to handle keydown events
@@ -766,290 +741,6 @@ export default function PDFManager() {
     }
   }
 
-  // First, add a state to track the selected quality
-  const [compressionQuality, setCompressionQuality] = useState(null)
-
-  useEffect(() => {
-    setCompressionQuality('high')
-  }, [])
-
-  // Modify the compressPdfClientSide function to use the state
-  const compressPdfClientSide = async () => {
-    if (!pages.length) {
-      alert('Nenhuma página selecionada!');
-      return;
-    }
-
-    setIsProcessing(true);
-    setProgress(0);
-    setProgressMessage('Iniciando compressão...');
-
-    try {
-      // Create a new PDF document
-      const newPdf = await PDFDocument.create();
-      
-      // Calcular tamanho original primeiro (5% do progresso)
-      setProgressMessage('Calculando tamanho original...');
-      const mergedPdf = await PDFDocument.create();
-      // Quality settings
-      const settings = {
-        high: { scale: 1.5, quality: 0.9, resolution: 150 },
-        medium: { scale: 1.0, quality: 0.7, resolution: 120 },
-        low: { scale: 0.8, quality: 0.5, resolution: 96 },
-      }
-
-      const {
-        scale,
-        quality: imageQuality,
-        resolution,
-      } = settings[compressionQuality] || settings.high
-
-      console.log(
-        `Comprimindo PDF com qualidade: ${compressionQuality} (escala: ${scale}, qualidade: ${imageQuality})`,
-      )
-
-      // First, calculate original size
-      for (const pageData of pages) {
-        if (pageData.isImage) {
-          // Handle image file
-          const imageBytes = await fetch(pageData.previewUrl).then((res) =>
-            res.arrayBuffer(),
-          )
-          let image
-          if (pageData.file.type === 'image/jpeg') {
-            image = await mergedPdf.embedJpg(imageBytes)
-          } else if (pageData.file.type === 'image/png') {
-            image = await mergedPdf.embedPng(imageBytes)
-          } else {
-            const img = new Image()
-            await new Promise((resolve) => {
-              img.onload = resolve
-              img.src = pageData.previewUrl
-            })
-            const canvas = document.createElement('canvas')
-            canvas.width = img.width
-            canvas.height = img.height
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, 0, 0)
-            const pngData = await fetch(canvas.toDataURL('image/png')).then(
-              (res) => res.arrayBuffer(),
-            )
-            image = await mergedPdf.embedPng(pngData)
-          }
-          const { width, height } = image
-          mergedPdf.addPage([width, height])
-        } else {
-          // Handle PDF file
-          const arrayBuffer = await pageData.file.arrayBuffer()
-          const pdf = await PDFDocument.load(arrayBuffer)
-          const copiedPage = await mergedPdf.copyPages(pdf, [
-            pageData.pageIndex,
-          ])
-          mergedPdf.addPage(copiedPage[0])
-        }
-      }
-
-      const originalPdfBytes = await mergedPdf.save()
-      const originalBlob = new Blob([originalPdfBytes], {
-        type: 'application/pdf',
-      })
-      setOriginalSizeMB((originalBlob.size / (1024 * 1024)).toFixed(2))
-      setProgress(5);
-      
-      // Processar cada página
-      const totalPages = pages.length;
-      
-      for (let i = 0; i < totalPages; i++) {
-        const page = pages[i];
-        
-        // Atualizar progresso - distribuir 90% do progresso entre as páginas
-        const pageProgress = 5 + ((i / totalPages) * 90);
-        setProgress(pageProgress);
-        setProgressMessage(`Comprimindo página ${i+1} de ${totalPages}...`);
-        
-        if (page.isImage) {
-          // For image pages
-          const img = new Image()
-          await new Promise((resolve) => {
-            img.onload = resolve
-            img.src = page.previewUrl
-          })
-
-          // Create a canvas with appropriate dimensions
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-
-          // Calculate target dimensions based on quality
-          const targetWidth = Math.floor(img.width * scale)
-          const targetHeight = Math.floor(img.height * scale)
-
-          // Set canvas size
-          canvas.width = targetWidth
-          canvas.height = targetHeight
-
-          // Draw image at reduced size
-          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
-
-          // Apply rotation if needed
-          const rotation = pageRotations[page.id] || 0
-          if (rotation !== 0) {
-            // Create a new canvas for the rotated image
-            const rotatedCanvas = document.createElement('canvas')
-            const rotatedCtx = rotatedCanvas.getContext('2d')
-
-            // Swap dimensions for 90/270 degree rotations
-            const swapDimensions = rotation === 90 || rotation === 270
-            rotatedCanvas.width = swapDimensions ? targetHeight : targetWidth
-            rotatedCanvas.height = swapDimensions ? targetWidth : targetHeight
-
-            // Rotate around center
-            rotatedCtx.translate(
-              rotatedCanvas.width / 2,
-              rotatedCanvas.height / 2,
-            )
-            rotatedCtx.rotate((rotation * Math.PI) / 180)
-            rotatedCtx.drawImage(canvas, -targetWidth / 2, -targetHeight / 2)
-
-            // Use the rotated canvas
-            canvas.width = rotatedCanvas.width
-            canvas.height = rotatedCanvas.height
-            ctx.drawImage(rotatedCanvas, 0, 0)
-          }
-
-          // Get compressed image data
-          const compressedImageData = canvas.toDataURL(
-            'image/jpeg',
-            imageQuality,
-          )
-
-          // Convert to binary data
-          const imageBytes = await fetch(compressedImageData).then((res) =>
-            res.arrayBuffer(),
-          )
-
-          // Embed in PDF
-          const embeddedImage = await newPdf.embedJpg(imageBytes)
-
-          // Add page with image dimensions
-          const newPage = newPdf.addPage([
-            embeddedImage.width,
-            embeddedImage.height,
-          ])
-
-          // Draw image on page
-          newPage.drawImage(embeddedImage, {
-            x: 0,
-            y: 0,
-            width: embeddedImage.width,
-            height: embeddedImage.height,
-          })
-        } else {
-          // For PDF pages
-          const arrayBuffer = await page.file.arrayBuffer()
-          const sourcePdf = await getDocument({ data: arrayBuffer }).promise
-          const pdfPage = await sourcePdf.getPage(page.pageIndex + 1)
-
-          // Get original viewport
-          const viewport = pdfPage.getViewport({ scale: 1.0 })
-
-          // Create a canvas with reduced dimensions
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-
-          // Calculate target dimensions based on quality
-          const targetWidth = Math.floor(viewport.width * scale)
-          const targetHeight = Math.floor(viewport.height * scale)
-
-          // Set canvas size
-          canvas.width = targetWidth
-          canvas.height = targetHeight
-
-          // Create scaled viewport
-          const scaledViewport = pdfPage.getViewport({ scale })
-
-          // Render PDF page to canvas at reduced resolution
-          await pdfPage.render({
-            canvasContext: ctx,
-            viewport: scaledViewport,
-          }).promise
-
-          // Get compressed image data
-          const compressedImageData = canvas.toDataURL(
-            'image/jpeg',
-            imageQuality,
-          )
-
-          // Convert to binary data
-          const imageBytes = await fetch(compressedImageData).then((res) =>
-            res.arrayBuffer(),
-          )
-
-          // Embed in PDF
-          const embeddedImage = await newPdf.embedJpg(imageBytes)
-
-          // Add page with original dimensions to maintain aspect ratio
-          const newPage = newPdf.addPage([viewport.width, viewport.height])
-
-          // Draw image on page
-          newPage.drawImage(embeddedImage, {
-            x: 0,
-            y: 0,
-            width: viewport.width,
-            height: viewport.height,
-          })
-
-          // Apply rotation if needed
-          const rotation = pageRotations[page.id] || 0
-          if (rotation !== 0) {
-            let pdfRotation
-            switch (rotation) {
-              case 90:
-                pdfRotation = degrees(90)
-                break
-              case 180:
-                pdfRotation = degrees(180)
-                break
-              case 270:
-                pdfRotation = degrees(270)
-                break
-              default:
-                pdfRotation = degrees(0)
-            }
-            newPage.setRotation(pdfRotation)
-          }
-        }
-      }
-      
-      // Finalizar e salvar (últimos 5% do progresso)
-      setProgressMessage('Finalizando PDF...');
-      setProgress(95);
-      
-      // Save the compressed PDF
-      const compressedPdfBytes = await newPdf.save()
-      const compressedBlob = new Blob([compressedPdfBytes], {
-        type: 'application/pdf',
-      })
-
-      // Update state
-      setCompressedBlob(compressedBlob)
-      setCompressedSizeMB((compressedBlob.size / (1024 * 1024)).toFixed(2))
-      
-      setProgress(100);
-      setProgressMessage('Compressão concluída!');
-      
-      // Aguardar um momento para mostrar 100% antes de esconder a barra
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('✅ PDF comprimido com sucesso!');
-      return compressedBlob;
-    } catch (error) {
-      console.error('Erro ao comprimir PDF:', error)
-      alert('Falha ao comprimir o PDF. Verifique o console para detalhes.')
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
   return (
     <Card className='max-w-6xl mx-auto mt-10 p-6 space-y-6'>
       <CardContent className='space-y-6'>
@@ -1063,10 +754,14 @@ export default function PDFManager() {
                   htmlFor='file-upload'
                   className='flex flex-col items-center cursor-pointer space-y-2'
                 >
-                  <UploadCloud
-                    size={48}
-                    className='text-blue-500 hover:text-blue-600 transition'
-                  />
+                  {loadingPdfs ? (
+                    <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500'></div>
+                  ) : (
+                    <UploadCloud
+                      size={48}
+                      className='text-blue-500 hover:text-blue-600 transition'
+                    />
+                  )}
                   <span className='text-blue-600 font-medium'>
                     {loadingPdfs
                       ? 'Carregando arquivos...'
@@ -1084,204 +779,289 @@ export default function PDFManager() {
                 />
               </div>
 
-              {/* Botões de rotação */}
+              {/* Botões de rotação - ADICIONADOS AQUI */}
               {selectedPageId && (
                 <>
-                  <ActionButton
-                    icon={<RotateCcw size={48} />}
-                    label="Girar Esquerda"
-                    onClick={() => rotateSelectedPage('left')}
-                    color="indigo"
-                  />
-                  
-                  <ActionButton
-                    icon={<RotateCw size={48} />}
-                    label="Girar Direita"
-                    onClick={() => rotateSelectedPage('right')}
-                    color="indigo"
-                  />
+                  <div className='flex flex-col items-center justify-center text-gray-400'>
+                    <button
+                      onClick={() => rotateSelectedPage('left')}
+                      className='flex flex-col items-center space-y-2 cursor-pointer'
+                      type='button'
+                    >
+                      <RotateCcw
+                        size={48}
+                        className='text-indigo-500 hover:text-indigo-600 transition'
+                      />
+                      <span className='text-indigo-600 font-medium'>
+                        Girar Esquerda
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className='flex flex-col items-center justify-center text-gray-400'>
+                    <button
+                      onClick={() => rotateSelectedPage('right')}
+                      className='flex flex-col items-center space-y-2 cursor-pointer'
+                      type='button'
+                    >
+                      <RotateCw
+                        size={48}
+                        className='text-indigo-500 hover:text-indigo-600 transition'
+                      />
+                      <span className='text-indigo-600 font-medium'>
+                        Girar Direita
+                      </span>
+                    </button>
+                  </div>
                 </>
               )}
 
               {/* Botão de MESCLAR PDFs */}
-              <ActionButton
-                icon={<FilePlus size={48} />}
-                label="Mesclar PDFs"
-                onClick={handleMergePDFs}
-                disabled={!pages.length}
-                color="green"
-              />
-
-              {/* Botão de Comprimir PDF */}
               <div className='flex flex-col items-center justify-center text-gray-400'>
                 <button
-                  onClick={compressPdfClientSide}
-                  disabled={!pages.length || compressing}
+                  onClick={handleMergePDFs}
+                  disabled={!pages.length}
                   className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
                   type='button'
                 >
-                  <Shrink
+                  <FilePlus
                     size={48}
                     className={`${
                       pages.length
-                        ? 'text-yellow-500 hover:text-yellow-600'
+                        ? 'text-green-500 hover:text-green-600'
                         : 'text-gray-300'
                     } transition`}
                   />
                   <span
                     className={`${
-                      pages.length ? 'text-yellow-600' : 'text-gray-400'
+                      pages.length ? 'text-green-600' : 'text-gray-400'
                     } font-medium`}
                   >
-                    {compressing ? 'Comprimindo...' : 'Comprimir PDF'}
+                    Mesclar PDFs
+                  </span>
+                </button>
+              </div>
+
+              {/* Botão de MESCLAR + COMPRIMIR PDFs */}
+              <div className='flex flex-col items-center justify-center text-gray-400'>
+                <button
+                  onClick={handleUploadAndCompress}
+                  disabled={!files.length || compressing}
+                  className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+                  type='button'
+                >
+                  {compressing ? (
+                    <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500'></div>
+                  ) : (
+                    <Shrink
+                      size={48}
+                      className={`${
+                        files.length
+                          ? 'text-yellow-500 hover:text-yellow-600'
+                          : 'text-gray-300'
+                      } transition`}
+                    />
+                  )}
+                  <span
+                    className={`${
+                      files.length ? 'text-yellow-600' : 'text-gray-400'
+                    } font-medium`}
+                  >
+                    {compressing ? 'Comprimindo...' : 'Mesclar e Comprimir'}
                   </span>
                 </button>
               </div>
 
               {/* Botão para converter páginas para JPG */}
-              <ActionButton
-                icon={
-                  <div className="relative">
+              <div className='flex flex-col items-center justify-center text-gray-400'>
+                <button
+                  onClick={() => convertPagesToImages('jpg')}
+                  disabled={!pages.length || compressing}
+                  className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+                  type='button'
+                >
+                  {compressing ? (
+                    <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500'></div>
+                  ) : (
                     <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="48"
-                      height="48"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='48'
+                      height='48'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      className={`${
+                        pages.length
+                          ? 'text-orange-500 hover:text-orange-600'
+                          : 'text-gray-300'
+                      } transition`}
                     >
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
+                      <path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' />
+                      <polyline points='14 2 14 8 20 8' />
+                      <text
+                        x='8'
+                        y='17'
+                        fontSize='5'
+                        fontWeight='bold'
+                        fill='currentColor'
+                      >
+                        JPG
+                      </text>
                     </svg>
-                    <div className="absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-bold px-1 rounded">
-                      JPG
-                    </div>
-                  </div>
-                }
-                label="Exportar como JPG"
-                onClick={() => convertPagesToImages('jpg')}
-                disabled={!pages.length || compressing}
-                color="orange"
-              />
-              {/* Botão para converter páginas para PNG */}
-              <ActionButton
-                icon={
-                  <div className="relative">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="48"
-                      height="48"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                    <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-xs font-bold px-1 rounded">
-                      PNG
-                    </div>
-                  </div>
-                }
-                label="Exportar como PNG"
-                onClick={() => convertPagesToImages('png')}
-                disabled={!pages.length || compressing}
-                color="blue"
-              />              {/* Seletor de qualidade de compressão */}
-              {pages.length > 0 && (
-                <div className="flex flex-col items-center mt-4">
-                  <label htmlFor="quality-select" className="mb-2 text-sm font-medium text-gray-700">
-                    Qualidade da Compressão
-                  </label>
-                  {compressionQuality !== null && (
-                    <Select 
-                      value={compressionQuality}
-                      onValueChange={setCompressionQuality}
-                      disabled={compressing}
-                      
-                    >
-                      <SelectTrigger className="w-[280px]">
-                        <SelectValue placeholder="Selecione a qualidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high"> Alta Qualidade (Tamanho Maior)</SelectItem>
-                        <SelectItem value="medium"> Qualidade Média (Equilibrada)</SelectItem>
-                        <SelectItem value="low">Baixa Qualidade (Tamanho Menor)</SelectItem>
-                      </SelectContent>
-                    </Select>
                   )}
-                </div>
-              )}
+                  <span
+                    className={`${
+                      pages.length ? 'text-orange-600' : 'text-gray-400'
+                    } font-medium`}
+                  >
+                    {compressing ? 'Converting...' : 'Exportar como JPG'}
+                  </span>
+                </button>
+              </div>
+
+              {/* Botão para converter páginas para PNG */}
+              <div className='flex flex-col items-center justify-center text-gray-400'>
+                <button
+                  onClick={() => convertPagesToImages('png')}
+                  disabled={!pages.length || compressing}
+                  className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+                  type='button'
+                >
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='48'
+                    height='48'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    className={`${
+                      pages.length
+                        ? 'text-blue-500 hover:text-blue-600'
+                        : 'text-gray-300'
+                    } transition`}
+                  >
+                    <path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' />
+                    <polyline points='14 2 14 8 20 8' />
+                    <text
+                      x='8'
+                      y='17'
+                      fontSize='5'
+                      fontWeight='bold'
+                      fill='currentColor'
+                    >
+                      PNG
+                    </text>
+                  </svg>
+                  <span
+                    className={`${
+                      pages.length ? 'text-blue-600' : 'text-gray-400'
+                    } font-medium`}
+                  >
+                    Exportar como PNG
+                  </span>
+                </button>
+              </div>
 
               {/* Botão de Baixar PDF Mesclado */}
               {mergedPdfUrl && !compressedBlob && (
-                <ActionButton
-                  icon={<Download size={48} />}
-                  label="Baixar PDF Mesclado"
-                  href={mergedPdfUrl}
-                  download="pdf_mesclado.pdf"
-                  color="purple"
-                />
+                <div className='flex flex-col items-center justify-center text-gray-400'>
+                  <a
+                    href={mergedPdfUrl}
+                    download='pdf_mesclado.pdf'
+                    className='flex flex-col items-center space-y-2 cursor-pointer'
+                  >
+                    <Download
+                      size={48}
+                      className='text-purple-500 hover:text-purple-600 transition'
+                    />
+                    <span className='text-purple-600 font-medium'>
+                      Baixar PDF Mesclado
+                    </span>
+                  </a>
+                </div>
               )}
 
               {/* Botão de Baixar PDF Comprimido */}
               {compressedBlob && (
-                <ActionButton
-                  icon={<Download size={48} />}
-                  label="Baixar PDF Comprimido"
-                  onClick={() => {
-                    const url = URL.createObjectURL(compressedBlob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = 'pdf_comprimido.pdf'
-                    document.body.appendChild(a)
-                    a.click()
-                    document.body.removeChild(a)
-                  }}
-                  color="green"
-                />
+                <div className='flex flex-col items-center justify-center text-gray-400'>
+                  <button
+                    onClick={() => {
+                      const url = URL.createObjectURL(compressedBlob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = 'pdf_comprimido.pdf'
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                    }}
+                    className='flex flex-col items-center space-y-2 cursor-pointer'
+                  >
+                    <Download
+                      size={48}
+                      className='text-green-500 hover:text-green-600 transition'
+                    />
+                    <span className='text-green-600 font-medium'>
+                      Baixar PDF Comprimido
+                    </span>
+                  </button>
+                </div>
               )}
 
               {/* Botão de Deletar todas as páginas */}
-              <ActionButton
-                icon={<Trash2 size={48} />}
-                label="Deletar Tudo"
-                onClick={() => {
-                  // Limpar todos os estados relacionados aos PDFs
-                  // Revogar URLs de objetos para liberar memória
-                  pages.forEach((page) => {
-                    if (page.isImage) {
-                      URL.revokeObjectURL(page.previewUrl)
+              <div className='flex flex-col items-center justify-center text-gray-400'>
+                <button
+                  onClick={() => {
+                    // Limpar todos os estados relacionados aos PDFs
+                    // Revogar URLs de objetos para liberar memória
+                    pages.forEach((page) => {
+                      if (page.isImage) {
+                        URL.revokeObjectURL(page.previewUrl)
+                      }
+                    })
+
+                    setPages([])
+                    setFiles([])
+                    setMergedPdfUrl(null)
+                    setMergedFileName('merged')
+                    setMergedPdfSize(null)
+                    setCompressedPdfSize(null)
+                    setCompressedBlob(null)
+                    setCompressedSizeMB(null)
+                    setOriginalSizeMB(null)
+                    setSelectedPageId(null)
+                    setPageRotations({})
+
+                    if (mergedPdfUrl) {
+                      URL.revokeObjectURL(mergedPdfUrl)
                     }
-                  })
-
-                  setPages([])
-                  setFiles([])
-                  setMergedPdfUrl(null)
-                  setMergedFileName('merged')
-                  setMergedPdfSize(null)
-                  setCompressedPdfSize(null)
-                  setCompressedBlob(null)
-                  setCompressedSizeMB(null)
-                  setOriginalSizeMB(null)
-                  setSelectedPageId(null)
-                  setPageRotations({})
-
-                  if (mergedPdfUrl) {
-                    URL.revokeObjectURL(mergedPdfUrl)
-                  }
-                }}
-                disabled={!pages.length}
-                color="red"
-              />
+                  }}
+                  disabled={!pages.length}
+                  className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+                  type='button'
+                >
+                  <Trash2
+                    size={48}
+                    className={`${
+                      pages.length
+                        ? 'text-red-500 hover:text-red-600'
+                        : 'text-gray-300'
+                    } transition`}
+                  />
+                  <span
+                    className={`${
+                      pages.length ? 'text-red-600' : 'text-gray-400'
+                    } font-medium`}
+                  >
+                    Deletar Tudo
+                  </span>
+                </button>
+              </div>
 
               {/* Informações sobre tamanho */}
               {originalSizeMB && (
@@ -1324,8 +1104,8 @@ export default function PDFManager() {
                   strategy={verticalListSortingStrategy}
                 >
                   <div className='flex justify-center items-center '>
-                    {loadingPdfs || compressing  ? (
-                      <div className='max-w-75 max-h-75 '>
+                    {loadingPdfs ? (
+                      <div className='max-w-75 max-h-75 ' >
                         <Spin />
                       </div>
                     ) : (
