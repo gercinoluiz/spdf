@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
 import "./globals.css";
 import { Footer } from "@/components/footer";
 
-const roboto = Roboto({
-  weight: ['400', '500', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-roboto',
-});
+
 
 export const metadata: Metadata = {
   title: "SPdf",
@@ -21,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${roboto.variable}`}>
+    <html lang="en" className={``}>
       <body>
         {children}
         <Footer/>
