@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id             Int            @id @default(autoincrement())
+  name           String
+  contractNumber String         @unique
+  status         String         @default("Ativo")
+  email          String?
+  phone          String?
+  address        String?
+  city           String?
+  zipCode        String?
+  responsible    String?
+  observations   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  planId         Int
+  plan           Plan           @relation(fields: [planId], references: [id])
+  configuration  Configuration?
+  planHistory    PlanHistory[]
+  usage          Usage[]
+  users          User[]
+}
+
+model Plan {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  description String?
+  limit       Int
+  price       Decimal?      @db.Decimal(10, 2)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  clients     Client[]
+  planHistory PlanHistory[]
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  name       String
+  login      String    @unique
+  email      String?
+  status     String    @default("Ativo")
+  usage      Int       @default(0)
+  lastAccess DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  clientId   Int
+  client     Client    @relation(fields: [clientId], references: [id])
+}
+
+model PlanHistory {
+  id             Int      @id @default(autoincrement())
+  previousPlanId Int
+  reason         String?
+  changedBy      String
+  createdAt      DateTime @default(now())
+  clientId       Int
+  client         Client   @relation(fields: [clientId], references: [id])
+  previousPlan   Plan     @relation(fields: [previousPlanId], references: [id])
+}
+
+model Configuration {
+  id              Int       @id @default(autoincrement())
+  notifications   Boolean   @default(true)
+  reports         Boolean   @default(true)
+  apiAccess       Boolean   @default(false)
+  automaticBackup Boolean   @default(true)
+  contractDate    DateTime?
+  expirationDate  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  clientId        Int       @unique
+  client          Client    @relation(fields: [clientId], references: [id])
+}
+
+model Usage {
+  id       Int      @id @default(autoincrement())
+  value    Int
+  date     DateTime @default(now())
+  clientId Int
+  client   Client   @relation(fields: [clientId], references: [id])
+}

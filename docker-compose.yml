@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nextjs_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nextjs_db
+      POSTGRES_USER: nextjs_user
+      POSTGRES_PASSWORD: your_password_here
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - nextjs_network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nextjs_user -d nextjs_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Opcional: pgAdmin para interface web
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nextjs_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '8080:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - nextjs_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  nextjs_network:
+    driver: bridge

@@ -1,8 +1,7 @@
 'use client'
 
-import type React from 'react'
-
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -10,17 +9,64 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Eye, EyeOff, User, Lock } from 'lucide-react'
+import { toast } from 'sonner'
+import { useUserStore } from '@/store/useUserStore'
 
 export function LoginForm() {
+  const router = useRouter()
+  const { setUser } = useUserStore()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Adicionar estados para os campos do formulário
+  const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsLoading(false)
+    
+    try {
+      // Fazer requisição para a API de login
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ login, password }),
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao fazer login')
+      }
+      
+      // Atualizar o store com os dados do usuário
+      setUser(data.user)
+      
+      // Login bem-sucedido, mostrar toast de sucesso
+      toast.success('Login realizado com sucesso!', {
+        description: 'Redirecionando para a página inicial...',
+      })
+      
+      // Redirecionar para a página inicial
+      // Usar setTimeout para garantir que o toast seja exibido antes do redirecionamento
+      setTimeout(() => {
+        // Usar window.location para um redirecionamento completo que recarrega a página
+        window.location.href = '/clients'
+      }, 1000)
+    } catch (err) {
+      console.error('Erro ao fazer login:', err)
+      
+      // Mostrar toast de erro
+      toast.error('Falha no login', {
+        description: err instanceof Error ? err.message : 'Erro ao fazer login',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -47,6 +93,8 @@ export function LoginForm() {
                   placeholder='Insira seu usuário'
                   className='pl-10'
                   required
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
                 />
               </div>
             </div>
@@ -60,6 +108,8 @@ export function LoginForm() {
                   placeholder='Insira sua senha'
                   className='pl-10 pr-10'
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <Button
                   type='button'
@@ -78,7 +128,11 @@ export function LoginForm() {
             </div>
             <div className='flex items-center justify-between'>
               <div className='flex items-center space-x-2'>
-                <Checkbox id='remember' />
+                <Checkbox 
+                  id='remember' 
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
                 <Label
                   htmlFor='remember'
                   className='text-sm font-normal cursor-pointer'
@@ -100,12 +154,11 @@ export function LoginForm() {
               className='w-full bg-blue-500 hover:bg-blue-800'
               size='lg'
               disabled={isLoading}
-              
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
             <p className='text-center text-sm text-muted-foreground'>
-              {"Don't have an account? "}
+              {"Não tem uma conta? "}
               <Link href='/signup' className='text-primary hover:underline'>
                 Fale com seu gestor e solicite uma!
               </Link>

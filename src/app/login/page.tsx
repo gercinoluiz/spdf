@@ -3,21 +3,16 @@
 import { LoginForm } from '../../components/login-form'
 import imageLoginPage from '../../../assets/loginImage.json'
 
-import Lottie from 'lottie-react'
+import logo from '../../../assets/logo.png'
+import Image from 'next/image'
 
 export default function LoginPage() {
   return (
     <div className='min-h-screen flex  max-h-80'>
       {/* Left side - Image */}
       <div className='hidden lg:flex lg:w-3/7 relative justify-center items-center flex-col'>
-        <Lottie 
-          animationData={imageLoginPage} 
-          loop={true}
-          style={{ width: '70%', height: '70%', marginTop:'-10%' }}
-        />
-        <h1 className='text-4xl font-bold text-gray-800'>
-          São Paulo PDF
-        </h1>
+      <Image src={logo} alt='logo' className='w-200 h-100' />
+
 
       </div>
 

@@ -1068,7 +1068,7 @@ export default function PDFManager() {
   }
 
   return (
-    <Card className='max-w-6xl mx-auto p-6 space-y-6'>
+    <Card className='max-w-6xl mx-auto p-6 space-y-6 mt-4'>
       <CardContent className='space-y-6'>
         {/* Lista de páginas */}
         <div className='space-y-4'>
