@@ -43,8 +43,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    const id = Number.parseInt(params.id)
+    // Await params before accessing its properties
+    const { id: paramId } = await params
+    const id = Number.parseInt(paramId)
     const body = await request.json()
+    
+    console.log(body)
 
     const {
       cliente: name,
@@ -79,32 +83,74 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     })
 
     // Atualizar o cliente
-    const updatedClient = await prisma.client.update({
-      where: { id },
-      data: {
-        name,
-        contractNumber,
-        planId: plan.id,
-        status,
-        email,
-        phone,
-        address,
-        city,
-        zipCode,
-        responsible,
-        observations,
-        configuration: {
-          update: {
-            notifications: configuracoes?.notificacoes,
-            reports: configuracoes?.relatorios,
-            apiAccess: configuracoes?.apiAccess,
-            automaticBackup: configuracoes?.backupAutomatico,
-            contractDate: dataContrato ? new Date(dataContrato) : undefined,
-            expirationDate: dataVencimento ? new Date(dataVencimento) : undefined,
+    // Check if configuration exists for this client
+    const existingConfig = await prisma.configuration.findUnique({
+      where: { clientId: id },
+    })
+    
+    // Prepare the client update data
+    const clientUpdateData = {
+      name,
+      contractNumber,
+      planId: plan.id,
+      status,
+      email,
+      phone,
+      address,
+      city,
+      zipCode,
+      responsible,
+      observations,
+    }
+    
+    // If configuration exists, update it; otherwise, create it
+    if (existingConfig) {
+      // Update existing configuration
+      const updatedClient = await prisma.client.update({
+        where: { id },
+        data: {
+          ...clientUpdateData,
+          configuration: {
+            update: {
+              notifications: configuracoes?.notificacoes,
+              reports: configuracoes?.relatorios,
+              apiAccess: configuracoes?.apiAccess,
+              automaticBackup: configuracoes?.backupAutomatico,
+              contractDate: dataContrato ? new Date(dataContrato) : undefined,
+              expirationDate: dataVencimento ? new Date(dataVencimento) : undefined,
+            },
           },
         },
-      },
-    })
+        include: {
+          plan: true,
+          configuration: true,
+        },
+      })
+      return NextResponse.json(updatedClient)
+    } else {
+      // Create new configuration
+      const updatedClient = await prisma.client.update({
+        where: { id },
+        data: {
+          ...clientUpdateData,
+          configuration: {
+            create: {
+              notifications: configuracoes?.notificacoes,
+              reports: configuracoes?.relatorios,
+              apiAccess: configuracoes?.apiAccess,
+              automaticBackup: configuracoes?.backupAutomatico,
+              contractDate: dataContrato ? new Date(dataContrato) : undefined,
+              expirationDate: dataVencimento ? new Date(dataVencimento) : undefined,
+            },
+          },
+        },
+        include: {
+          plan: true,
+          configuration: true,
+        },
+      })
+      return NextResponse.json(updatedClient)
+    }
 
     // Registrar mudança de plano no histórico se necessário
     if (currentClient && currentClient.planId !== plan.id) {

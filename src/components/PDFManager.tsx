@@ -230,9 +230,23 @@ export default function PDFManager() {
         (currentRotation + (direction === 'right' ? 90 : -90) + 360) % 360
       return { ...prev, [selectedPageId]: newRotation }
     })
+    
+    // // Incrementar uso após rotação
+    // incrementUsage()
   }
 
   const [loadingPdfs, setLoadingPdfs] = useState(false)
+
+  // Adicione esta função após as importações
+  const incrementUsage = async () => {
+    try {
+      await fetch('/api/usage/increment', {
+        method: 'POST',
+      })
+    } catch (error) {
+      console.error('Erro ao incrementar uso:', error)
+    }
+  }
 
   const handleFileChange = async (e) => {
     const newFiles = Array.from(e.target.files);
@@ -241,6 +255,9 @@ export default function PDFManager() {
     setLoadingPdfs(true);
     setIsLoading(true);
     setShowProgressBar(false); // Não mostrar barra de progresso para upload
+    
+    // // Incrementar uso após carregar arquivos
+    // incrementUsage();
     
     try {
       setFiles((prev) => [...prev, ...newFiles])
@@ -337,6 +354,9 @@ export default function PDFManager() {
     setPages((currentPages) =>
       currentPages.filter((page) => page.id !== idToDelete),
     )
+    
+    // // Incrementar uso após deletar página
+    // incrementUsage()
   }
 
   const handleDragEnd = (event) => {
@@ -374,7 +394,7 @@ export default function PDFManager() {
     setIsLoading(true);
     setShowProgressBar(true); // Mostrar barra de progresso para mesclagem
     setProgress(0);
-    setProgressMessage('Iniciando mesclagem de PDFs...');
+    setProgressMessage('Iniciando mesclagem de PDFs..');
     
     try {
       const mergedPdf = await PDFDocument.create();
@@ -546,6 +566,9 @@ export default function PDFManager() {
     }
 
     setCompressing(true)
+    
+    // Incrementar contador de uso
+    incrementUsage()
 
     try {
       // Step 1: Create a merged PDF with both PDFs and images
@@ -646,7 +669,7 @@ export default function PDFManager() {
     }
   }
 
-  const convertPagesToImages = async (format = 'jpg') => {
+  const convertPagesToImages = async (format: 'jpg' | 'png') => {
     if (!pages.length) {
       alert('No pages to convert!');
       return;
@@ -658,6 +681,9 @@ export default function PDFManager() {
       setShowProgressBar(true); // Mostrar barra de progresso para conversão
       setProgress(0);
       setProgressMessage(`Iniciando conversão para ${format.toUpperCase()}...`);
+      
+      // Incrementar contador de uso
+      incrementUsage();
 
       setProgress(5);
       setProgressMessage('Carregando bibliotecas...');
@@ -815,6 +841,9 @@ export default function PDFManager() {
           pages.length
         } pages to ${format.toUpperCase()}`
       );
+      
+      // Incrementar uso após a conversão ser concluída
+      incrementUsage();
     } catch (error) {
       console.error(`Error converting pages to ${format}:`, error);
       alert(
@@ -846,6 +875,9 @@ export default function PDFManager() {
     setShowProgressBar(true); // Mostrar barra de progresso para compressão
     setProgress(0);
     setProgressMessage('Iniciando compressão...');
+    
+    // Incrementar contador de uso
+    incrementUsage();
 
     try {
       // Create a new PDF document
@@ -1056,6 +1088,8 @@ export default function PDFManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log('✅ PDF comprimido com sucesso!');
+      // Incrementar contador de uso após compressão bem-sucedida
+      incrementUsage();
       return compressedBlob;
     } catch (error) {
       console.error('Erro ao comprimir PDF:', error);

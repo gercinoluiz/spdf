@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Save, X, History, User, Settings, CreditCard, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 
-// Dados simulados do cliente
+// Dados simulados do cliente (será usado como fallback ou estado inicial)
 const clientData = {
   id: 1,
   cliente: "Smith Corporation",
@@ -61,8 +61,68 @@ const planHistory = [
 
 export default function EditClient() {
   const params = useParams()
+  const clientId = params.id
+  
   const [formData, setFormData] = useState(clientData)
   const [isLoading, setIsLoading] = useState(false)
+  const [fetchLoading, setFetchLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchClientData = async () => {
+      if (!clientId) return
+      
+      try {
+        setFetchLoading(true)
+        const response = await fetch(`/api/clients/${clientId}`)
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Cliente não encontrado')
+          }
+          throw new Error(`Erro ao buscar cliente: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Map API data to form data structure
+        setFormData({
+          id: data.id,
+          cliente: data.name || '',
+          contrato: data.contractNumber || '',
+          plano: data.plan?.name || 'Bronze',
+          viso: data.usage && data.usage.length > 0 
+            ? `${data.usage[0].value}/${data.plan?.limit || 0}` 
+            : '0/0',
+          status: data.status || 'Ativo',
+          email: data.email || '',
+          telefone: data.phone || '',
+          endereco: data.address || '',
+          cidade: data.city || '',
+          cep: data.zipCode || '',
+          responsavel: data.responsible || '',
+          dataContrato: data.configuration?.contractDate || '',
+          dataVencimento: data.configuration?.expirationDate || '',
+          observacoes: data.observations || '',
+          configuracoes: {
+            notificacoes: data.configuration?.notifications || false,
+            relatorios: data.configuration?.reports || false,
+            apiAccess: data.configuration?.apiAccess || false,
+            backupAutomatico: data.configuration?.automaticBackup || false,
+          },
+        })
+        
+        setError(null)
+      } catch (err) {
+        console.error('Erro ao buscar cliente:', err)
+        setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      } finally {
+        setFetchLoading(false)
+      }
+    }
+
+    fetchClientData()
+  }, [clientId])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -83,11 +143,56 @@ export default function EditClient() {
 
   const handleSave = async () => {
     setIsLoading(true)
-    // Simular salvamento
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    console.log("Dados salvos:", formData)
-    setIsLoading(false)
-    // Aqui você redirecionaria ou mostraria uma mensagem de sucesso
+    try {
+      // Prepare data for API
+      const clientDataToSave = {
+        cliente: formData.cliente,         
+        contrato: formData.contrato,       
+        plano: formData.plano,             // Make sure this is the exact plan name with correct case
+        status: formData.status,
+        email: formData.email,
+        telefone: formData.telefone,       
+        endereco: formData.endereco,       
+        cidade: formData.cidade,           
+        cep: formData.cep,                 
+        responsavel: formData.responsavel, 
+        dataContrato: formData.dataContrato,
+        dataVencimento: formData.dataVencimento,
+        observacoes: formData.observacoes, 
+        configuracoes: {                   
+          notificacoes: formData.configuracoes.notificacoes,
+          relatorios: formData.configuracoes.relatorios,
+          apiAccess: formData.configuracoes.apiAccess,
+          backupAutomatico: formData.configuracoes.backupAutomatico,
+        }
+      }
+      
+      // Add debugging to see what's being sent
+      console.log('Sending data to API:', clientDataToSave);
+      
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clientDataToSave),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API error response:', errorData);
+        throw new Error(`Erro ao salvar cliente: ${response.status} - ${errorData.error || ''}`)
+      }
+      
+      // Success handling
+      console.log('Dados salvos com sucesso')
+      // Optionally redirect or show success message
+    } catch (err) {
+      console.error('Erro ao salvar cliente:', err)
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getPlanBadge = (plano: string) => {
@@ -98,6 +203,30 @@ export default function EditClient() {
       Bronze: "bg-orange-100 text-orange-800",
     }
     return <Badge className={colors[plano as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{plano}</Badge>
+  }
+
+  // Show loading state while fetching data
+  if (fetchLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando dados do cliente...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="text-red-500 mb-4">{error}</div>
+        <Link href="/clients">
+          <Button>Voltar para a lista de clientes</Button>
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -278,17 +407,17 @@ export default function EditClient() {
                   <div className="space-y-2">
                     <Label htmlFor="plano">Plano Atual</Label>
                     <Select
-                      value={formData.plano.toLowerCase()}
-                      onValueChange={(value) => handleInputChange("plano", value)}
+                      value={formData.plano}
+                      onValueChange={(value) => handleInputChange("plano", value.charAt(0).toUpperCase() + value.slice(1))}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bronze">Bronze</SelectItem>
-                        <SelectItem value="prata">Prata</SelectItem>
-                        <SelectItem value="ouro">Ouro</SelectItem>
-                        <SelectItem value="diamante">Diamante</SelectItem>
+                        <SelectItem value="Bronze">Bronze</SelectItem>
+                        <SelectItem value="Prata">Prata</SelectItem>
+                        <SelectItem value="Ouro">Ouro</SelectItem>
+                        <SelectItem value="Diamante">Diamante</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
