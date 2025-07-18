@@ -1125,10 +1125,13 @@ export default function PDFManager() {
       formData.append('compression_level', compressionLevel[0].toString()) // ADICIONAR ESTA LINHA
 
       // Use Python API on Docker port 5001
-      const response = await fetch('http://localhost:5001/compress-configurable', {
-        method: 'POST',
-        body: formData,
-      })
+      const response = await fetch(
+        'http://localhost:5001/compress-configurable',
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -1280,10 +1283,13 @@ export default function PDFManager() {
       setProgressMessage('Comprimindo PDF...')
 
       // Enviar para a API Python de compressão (Docker na porta 5001)
-      const response = await fetch('http://localhost:5001/compress-configurable', {
-        method: 'POST',
-        body: formData,
-      })
+      const response = await fetch(
+        'http://localhost:5001/compress-configurable',
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -1318,237 +1324,152 @@ export default function PDFManager() {
   }
 
   return (
-    <Card className='max-w-6xl mx-auto p-6 space-y-6 mt-4'>
+    <Card className='max-w-7xl mx-auto p-6 space-y-6 mt-4'>
+      <h2 className='text-lg font-medium mb-4'>
+        Páginas adicionadas ({pages.length})
+      </h2>
       <CardContent className='space-y-6'>
-        {/* Lista de páginas */}
-        <div className='space-y-4'>
-          <div>
-            <div className='flex flex-row flex-wrap items-center justify-center gap-6'>
-              {/* Botão de carregar arquivos */}
-              <div className='flex flex-col items-center justify-center text-gray-400'>
-                <label
-                  htmlFor='file-upload'
-                  className='flex flex-col items-center cursor-pointer space-y-1'
+        <div className='flex gap-6'>
+          {/* Área principal das páginas - Esquerda */}
+          <div className='flex-1'>
+            <div className='max-h-[600px] overflow-y-auto border rounded-md p-4 custom-scrollbar'>
+              {isLoading ? (
+                <div
+                  className='w-full flex justify-center items-center'
+                  style={{ minHeight: '300px' }}
                 >
-                  <UploadCloud
-                    size={36}
-                    className='text-blue-500 hover:text-blue-600 transition'
+                  <Spin
+                    progress={progress}
+                    progressMessage={progressMessage}
+                    showProgress={showProgressBar}
                   />
-                  <span className='text-blue-600 font-medium text-sm'>
-                    {loadingPdfs
-                      ? 'Carregando arquivos...'
-                      : 'Adicionar PDFs ou imagens'}
-                  </span>
-                </label>
-                <Input
-                  id='file-upload'
-                  type='file'
-                  multiple
-                  accept='application/pdf,image/jpeg,image/png,image/gif,image/webp'
-                  className='hidden'
-                  onChange={handleFileChange}
-                  disabled={loadingPdfs}
-                />
-              </div>
-              {/* Botões de rotação */}
-              {selectedPageId && (
-                <>
-                  <ActionButton
-                    icon={<RotateCcw size={36} />}
-                    label='Girar Esquerda'
-                    onClick={() => rotateSelectedPage('left')}
-                    color='indigo'
-                    size='small'
-                  />
-
-                  <ActionButton
-                    icon={<RotateCw size={36} />}
-                    label='Girar Direita'
-                    onClick={() => rotateSelectedPage('right')}
-                    color='indigo'
-                    size='small'
-                  />
-                </>
+                </div>
+              ) : (
+                <DndContext
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={pages.map((p) => p.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className='flex justify-center items-center'>
+                      {loadingPdfs || compressing || isMerging ? (
+                        <div className='max-w-75 max-h-75'>
+                          <Spin />
+                        </div>
+                      ) : (
+                        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
+                          {pages.map((page) => (
+                            <SortableThumbnail
+                              key={page.id}
+                              id={page.id}
+                              previewUrl={page.previewUrl}
+                              onDelete={handleDeletePage}
+                              rotation={pageRotations[page.id] || 0}
+                              isSelected={selectedPageId === page.id}
+                              onSelect={handleSelectPage}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               )}
-              {/* Botão de MESCLAR PDFs */}
+            </div>
+          </div>
+
+          {/* Sidebar com botões - Direita */}
+          <div className='w-80 space-y-4'>
+            {/* Botão de upload */}
+            <div className='flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50'>
+              <label
+                htmlFor='file-upload'
+                className='flex flex-col items-center cursor-pointer space-y-2'
+              >
+                <UploadCloud
+                  size={32}
+                  className='text-blue-500 hover:text-blue-600 transition'
+                />
+                <span className='text-blue-600 font-medium text-sm text-center'>
+                  {loadingPdfs
+                    ? 'Carregando arquivos...'
+                    : 'Adicionar PDFs ou imagens'}
+                </span>
+              </label>
+              <Input
+                id='file-upload'
+                type='file'
+                multiple
+                accept='application/pdf,image/jpeg,image/png,image/gif,image/webp'
+                className='hidden'
+                onChange={handleFileChange}
+                disabled={loadingPdfs}
+              />
+            </div>
+
+            {/* Slider de Compressão - Compacto */}
+            {pages.length > 0 && (
+              <div className='p-3 border rounded-lg bg-gray-50'>
+                <Label className='text-sm font-medium'>
+                  Nível de Compressão
+                </Label>
+                <div className='mt-2'>
+                  <Slider
+                    value={compressionLevel}
+                    onValueChange={setCompressionLevel}
+                    max={3}
+                    min={1}
+                    step={1}
+                    className='w-full'
+                  />
+                </div>
+                <div className='flex justify-between text-xs text-gray-500 mt-1'>
+                  <span>Baixa</span>
+                  <span>Média</span>
+                  <span>Alta</span>
+                </div>
+                <div className='text-center mt-2'>
+                  <div
+                    className={`text-sm font-medium ${
+                      getCompressionDescription(compressionLevel[0]).color
+                    }`}
+                  >
+                    {getCompressionDescription(compressionLevel[0]).name}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botões de ação em grid 2x2 */}
+            <div className='grid grid-cols-2 gap-3'>
               <ActionButton
-                icon={<FilePlus size={36} />}
-                label={isMerging ? 'Mesclando...' : 'Mesclar PDFs'}
+                icon={<FilePlus size={24} />}
+                label='Mesclar'
                 onClick={handleMergePDFs}
                 disabled={!pages.length || isMerging}
                 color='green'
                 size='small'
               />
-              {/* Botão de MESCLAR E COMPRIMIR PDFs */}
               <ActionButton
-                icon={<FilePlus size={36} />}
-                label={
-                  compressing
-                    ? 'Mesclando e Comprimindo...'
-                    : 'Mesclar e Comprimir'
-                }
+                icon={<FilePlus size={24} />}
+                label='Mesclar + Comprimir'
                 onClick={handleMergeAndCompress}
                 disabled={!pages.length || compressing || isMerging}
                 color='purple'
                 size='small'
               />
-              {/* Botão de Comprimir PDF */}
               <ActionButton
-                icon={<Shrink size={36} />}
-                label={compressing ? 'Comprimindo...' : 'Comprimir PDF'}
+                icon={<Shrink size={24} />}
+                label='Comprimir'
                 onClick={compressPdfClientSide}
                 disabled={!pages.length || compressing || isMerging}
                 color='yellow'
                 size='small'
               />
-              {/* Botão para converter páginas para JPG */}
               <ActionButton
-                icon={
-                  <div className='relative'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      width='36'
-                      height='36'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    >
-                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
-                      <circle cx='8.5' cy='8.5' r='1.5' />
-                      <polyline points='21 15 16 10 5 21' />
-                    </svg>
-                    <div className='absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-bold px-1 rounded'>
-                      JPG
-                    </div>
-                  </div>
-                }
-                label='Exportar como JPG'
-                onClick={() => convertPagesToImages('jpg')}
-                disabled={!pages.length || compressing}
-                color='orange'
-                size='small'
-              />
-              {/* Botão para converter páginas para PNG */}
-              <ActionButton
-                icon={
-                  <div className='relative'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      width='36'
-                      height='36'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    >
-                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
-                      <circle cx='8.5' cy='8.5' r='1.5' />
-                      <polyline points='21 15 16 10 5 21' />
-                    </svg>
-                    <div className='absolute bottom-0 right-0 bg-blue-500 text-white text-xs font-bold px-1 rounded'>
-                      PNG
-                    </div>
-                  </div>
-                }
-                label='Exportar como PNG'
-                onClick={() => convertPagesToImages('png')}
-                disabled={!pages.length || compressing}
-                color='blue'
-                size='small'
-              />
-
-              {/* Slider de Compressão - deve aparecer quando há páginas */}
-              {pages.length > 0 && (
-                <div className='w-full mt-6 p-4 border rounded-lg bg-gray-50'>
-                  <div className='space-y-4'>
-                    <div>
-                      <Label className='text-sm font-medium'>
-                        Nível de Compressão
-                      </Label>
-                      <div className='mt-2'>
-                        <Slider
-                          value={compressionLevel}
-                          onValueChange={setCompressionLevel}
-                          max={3}
-                          min={1}
-                          step={1}
-                          className='w-full'
-                        />
-                      </div>
-                      <div className='flex justify-between text-xs text-gray-500 mt-1'>
-                        <span>Baixa</span>
-                        <span>Média</span>
-                        <span>Alta</span>
-                      </div>
-                    </div>
-
-                    <div className='text-center'>
-                      <div
-                        className={`font-medium ${
-                          getCompressionDescription(compressionLevel[0]).color
-                        }`}
-                      >
-                        {getCompressionDescription(compressionLevel[0]).name}
-                      </div>
-                      <div className='text-sm text-gray-600'>
-                        {
-                          getCompressionDescription(compressionLevel[0])
-                            .description
-                        }
-                      </div>
-                      <div className='text-xs text-gray-500 mt-1'>
-                        💡 Maior compressão = menor qualidade visual
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Divider de largura total */}
-              {(mergedPdfUrl || compressedBlob || pages.length > 0) && (
-                <div className='w-full'>
-                  <hr className='border-gray-200' />
-                </div>
-              )}
-
-              {/* Botão de Baixar PDF Mesclado */}
-              {mergedPdfUrl && !compressedBlob && (
-                <ActionButton
-                  icon={<Download size={36} />}
-                  label='Baixar PDF Mesclado'
-                  href={mergedPdfUrl}
-                  download='pdf_mesclado.pdf'
-                  color='purple'
-                  size='small'
-                />
-              )}
-              {/* Botão de Baixar PDF Comprimido */}
-              {compressedBlob && (
-                <ActionButton
-                  icon={<Download size={36} />}
-                  label='Baixar PDF Comprimido'
-                  onClick={() => {
-                    const url = URL.createObjectURL(compressedBlob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = 'pdf_comprimido.pdf'
-                    document.body.appendChild(a)
-                    a.click()
-                    document.body.removeChild(a)
-                  }}
-                  color='green'
-                  size='small'
-                />
-              )}
-
-              {/* Botão de Deletar todas as páginas */}
-              <ActionButton
-                icon={<Trash2 size={36} />}
+                icon={<Trash2 size={24} />}
                 label='Deletar Tudo'
                 onClick={() => {
                   // Limpar todos os estados relacionados aos PDFs
@@ -1579,97 +1500,156 @@ export default function PDFManager() {
                 color='red'
                 size='small'
               />
-
-              {/* Informações sobre tamanho */}
-              {originalSizeMB && originalSizeMB > 0 && (
-                <div className='text-center text-gray-600'>
-                  <p>
-                    <strong>Tamanho original:</strong>{' '}
-                    {typeof originalSizeMB === 'number'
-                      ? originalSizeMB.toFixed(2)
-                      : parseFloat(originalSizeMB).toFixed(2)}{' '}
-                    MB
-                  </p>
-
-                  {compressedSizeMB && compressedSizeMB > 0 && (
-                    <>
-                      <p className='mt-1'>
-                        <strong>Tamanho após compressão:</strong>{' '}
-                        {typeof compressedSizeMB === 'number'
-                          ? compressedSizeMB.toFixed(2)
-                          : parseFloat(compressedSizeMB).toFixed(2)}{' '}
-                        MB
-                      </p>
-                      <p className='mt-1'>
-                        <strong>Redução:</strong>{' '}
-                        {(
-                          (1 -
-                            (typeof compressedSizeMB === 'number'
-                              ? compressedSizeMB
-                              : parseFloat(compressedSizeMB)) /
-                              (typeof originalSizeMB === 'number'
-                                ? originalSizeMB
-                                : parseFloat(originalSizeMB))) *
-                          100
-                        ).toFixed(2)}
-                        %
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
 
-            <h2 className='text-lg mt-6 font-medium'>
-              Páginas adicionadas ({pages.length})
-            </h2>
+            {/* Botões de rotação (quando página selecionada) */}
+            {selectedPageId && (
+              <div className='grid grid-cols-2 gap-3'>
+                <ActionButton
+                  icon={<RotateCcw size={24} />}
+                  label='Girar ←'
+                  onClick={() => rotateSelectedPage('left')}
+                  color='indigo'
+                  size='small'
+                />
+                <ActionButton
+                  icon={<RotateCw size={24} />}
+                  label='Girar →'
+                  onClick={() => rotateSelectedPage('right')}
+                  color='indigo'
+                  size='small'
+                />
+              </div>
+            )}
 
-            <div className='max-h-[500px] mt-6 overflow-y-auto border rounded-md p-4 custom-scrollbar'>
-              {isLoading ? (
-                <div
-                  className='w-full flex justify-center items-center'
-                  style={{ minHeight: '300px' }}
-                >
-                  <Spin
-                    progress={progress}
-                    progressMessage={progressMessage}
-                    showProgress={showProgressBar}
-                  />
-                </div>
-              ) : (
-                <DndContext
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={pages.map((p) => p.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className='flex justify-center items-center '>
-                      {loadingPdfs || compressing || isMerging ? (
-                        <div className='max-w-75 max-h-75 '>
-                          <Spin />
-                        </div>
-                      ) : (
-                        <div className='grid grid-cols-2 md:grid-cols-4 gap-12'>
-                          {pages.map((page) => (
-                            <SortableThumbnail
-                              key={page.id}
-                              id={page.id}
-                              previewUrl={page.previewUrl}
-                              onDelete={handleDeletePage}
-                              rotation={pageRotations[page.id] || 0}
-                              isSelected={selectedPageId === page.id}
-                              onSelect={handleSelectPage}
-                            />
-                          ))}
-                        </div>
-                      )}
+            {/* Botões de exportação */}
+            <div className='grid grid-cols-2 gap-3'>
+              <ActionButton
+                icon={
+                  <div className='relative'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='24'
+                      height='24'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                    >
+                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
+                      <circle cx='8.5' cy='8.5' r='1.5' />
+                      <polyline points='21 15 16 10 5 21' />
+                    </svg>
+                    <div className='absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-bold px-1 rounded'>
+                      JPG
                     </div>
-                  </SortableContext>
-                </DndContext>
-              )}
+                  </div>
+                }
+                label='Exportar JPG'
+                onClick={() => convertPagesToImages('jpg')}
+                disabled={!pages.length || compressing}
+                color='orange'
+                size='small'
+              />
+              <ActionButton
+                icon={
+                  <div className='relative'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='24'
+                      height='24'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                    >
+                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
+                      <circle cx='8.5' cy='8.5' r='1.5' />
+                      <polyline points='21 15 16 10 5 21' />
+                    </svg>
+                    <div className='absolute bottom-0 right-0 bg-blue-500 text-white text-xs font-bold px-1 rounded'>
+                      PNG
+                    </div>
+                  </div>
+                }
+                label='Exportar PNG'
+                onClick={() => convertPagesToImages('png')}
+                disabled={!pages.length || compressing}
+                color='blue'
+                size='small'
+              />
             </div>
+
+            {/* Botões de download */}
+            {mergedPdfUrl && !compressedBlob && (
+              <ActionButton
+                icon={<Download size={24} />}
+                label='Baixar PDF Mesclado'
+                href={mergedPdfUrl}
+                download='pdf_mesclado.pdf'
+                color='purple'
+                size='small'
+              />
+            )}
+            {compressedBlob && (
+              <ActionButton
+                icon={<Download size={24} />}
+                label='Baixar PDF Comprimido'
+                onClick={() => {
+                  const url = URL.createObjectURL(compressedBlob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = 'pdf_comprimido.pdf'
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                }}
+                color='green'
+                size='small'
+              />
+            )}
+
+            {/* Informações de tamanho */}
+            {originalSizeMB && originalSizeMB > 0 && (
+              <div className='text-center text-sm text-gray-600 p-3 bg-gray-50 rounded'>
+                <p>
+                  <strong>Original:</strong>{' '}
+                  {typeof originalSizeMB === 'number'
+                    ? originalSizeMB.toFixed(2)
+                    : parseFloat(originalSizeMB).toFixed(2)}{' '}
+                  MB
+                </p>
+                {compressedSizeMB && compressedSizeMB > 0 && (
+                  <>
+                    <p>
+                      <strong>Comprimido:</strong>{' '}
+                      {typeof compressedSizeMB === 'number'
+                        ? compressedSizeMB.toFixed(2)
+                        : parseFloat(compressedSizeMB).toFixed(2)}{' '}
+                      MB
+                    </p>
+                    <p>
+                      <strong>Redução:</strong>{' '}
+                      {(
+                        (1 -
+                          (typeof compressedSizeMB === 'number'
+                            ? compressedSizeMB
+                            : parseFloat(compressedSizeMB)) /
+                            (typeof originalSizeMB === 'number'
+                              ? originalSizeMB
+                              : parseFloat(originalSizeMB))) *
+                        100
+                      ).toFixed(2)}
+                      %
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
