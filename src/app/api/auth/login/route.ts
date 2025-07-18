@@ -65,29 +65,35 @@ export async function POST(request: Request) {
 
     // 3. Gerar token JWT usando jose (compatível com Edge Runtime)
     const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || 'your-secret-key'
+      process.env.JWT_SECRET || 'your-secret-key',
     )
-    
+
+    // No momento de gerar o token, incluir o role
     const token = await new SignJWT({
       id: user.id,
-      login: user.login,
       name: user.name,
+      login: user.login,
+      role: user.role, // Adicionar role
       clientId: user.clientId,
     })
       .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
       .setExpirationTime('24h')
       .sign(secret)
 
     // 4. Retornar resposta com token em cookie
+
     const response = NextResponse.json({
       user: {
         id: user.id,
         login: user.login,
         name: user.name,
         status: user.status,
+        role: user.role,
+        clientId: user.clientId, // Add this line
       },
     })
+
+    console.log(user)
 
     response.cookies.set({
       name: 'token-spdf',

@@ -28,13 +28,13 @@ export const Header = () => {
       await fetch('/api/auth/logout', {
         method: 'POST',
       })
-      
+
       // Limpar o usuário do store
       clearUser()
-      
+
       // Mostrar toast de sucesso
       toast.success('Logout realizado com sucesso!')
-      
+
       // Redirecionar para a página de login
       router.push('/login')
     } catch (error) {
@@ -48,8 +48,16 @@ export const Header = () => {
     if (!name) return 'U'
     const names = name.split(' ')
     if (names.length === 1) return names[0].charAt(0).toUpperCase()
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase()
+    return (
+      names[0].charAt(0) + names[names.length - 1].charAt(0)
+    ).toUpperCase()
   }
+
+  // Função para verificar se o usuário é manager ou admin
+  const isManagerOrAdmin = () =>
+    user?.role === 'manager' || user?.role === 'admin'
+
+  console.log('HEADER', user)
 
   return (
     <header className='bg-white border-b border-gray-200 px-6 py-4'>
@@ -63,17 +71,20 @@ export const Header = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Área do usuário */}
         {user && (
           <div className='flex items-center space-x-4'>
             <span className='text-sm text-gray-600 hidden md:inline'>
               Olá, {user.name.split(' ')[0]}
             </span>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
+                <Button
+                  variant='ghost'
+                  className='relative h-8 w-8 rounded-full'
+                >
                   <Avatar className='h-8 w-8'>
                     <AvatarFallback className='bg-blue-100 text-blue-800'>
                       {getInitials(user.name)}
@@ -89,19 +100,27 @@ export const Header = () => {
                   <span>{user.name}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem className='text-gray-500 text-sm'>
-                  {user.login}
+                  {user.login} ({user.role})
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
 
-                <Link href={`/clients`}>
-                  <DropdownMenuItem className='text-gray-500 text-sm'>
-                    <Settings2Icon className='mr-2 h-4 w-4' />
-                  Configurações
-                </DropdownMenuItem>
-                </Link>
-                <DropdownMenuSeparator />
+                {/* Mostrar configurações para admin e manager */}
+                {isManagerOrAdmin() && (
+                  <>
+                    <Link href={user?.role === 'admin' ? '/clients' : `/clients/${user?.clientId}`}>
+                      <DropdownMenuItem className='text-gray-500 text-sm'>
+                        <Settings2Icon className='mr-2 h-4 w-4' />
+                        Configurações
+                      </DropdownMenuItem>
+                    </Link>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
 
-                <DropdownMenuItem onClick={handleLogout} className='text-red-600'>
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className='text-red-600'
+                >
                   <LogOut className='mr-2 h-4 w-4' />
                   <span>Sair</span>
                 </DropdownMenuItem>

@@ -5,6 +5,7 @@ export interface User {
   id: number
   name: string
   login: string
+  role: 'user' | 'manager' | 'admin'
   clientId?: number
   status?: string
 }

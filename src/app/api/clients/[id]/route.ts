@@ -5,7 +5,9 @@ const prisma = new PrismaClient();
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const id = Number.parseInt(params.id)
+    // Await params before accessing its properties
+    const { id: paramId } = await params
+    const id = Number.parseInt(paramId)
 
     const client = await prisma.client.findUnique({
       where: { id },
@@ -173,7 +175,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    const id = Number.parseInt(params.id)
+    // Await params before accessing its properties
+    const { id: paramId } = await params
+    const id = Number.parseInt(paramId)
 
     // Excluir registros relacionados primeiro
     await prisma.planHistory.deleteMany({

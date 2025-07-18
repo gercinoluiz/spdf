@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   console.log("Middleware executando para:", request.nextUrl.pathname);
   
   // Obter o token do cookie
@@ -37,9 +38,28 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Se houver token, permitir acesso
-  // Não precisamos verificar a validade do token aqui, isso pode ser feito nas rotas de API
-  return NextResponse.next();
+  // Validar o token
+  try {
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || "your-secret-key"
+    );
+    
+    await jwtVerify(token, secret);
+    console.log("Token válido, permitindo acesso");
+    return NextResponse.next();
+  } catch (error) {
+    console.log("Token inválido, redirecionando para login");
+    // Token inválido, limpar cookie e redirecionar
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.set({
+      name: "token-spdf",
+      value: "",
+      httpOnly: true,
+      path: "/",
+      maxAge: 0,
+    });
+    return response;
+  }
 }
 
 // Configurar quais rotas o middleware deve verificar

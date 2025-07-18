@@ -26,6 +26,7 @@ import {
 import { Header } from '@/components/header'
 import { AddUsersModal } from '@/components/add-users-modal'
 import { EditUserStatusModal } from '@/components/edit-user-status-modal'
+import { useUserStore } from '@/store/useUserStore'
 
 // Dados de exemplo baseados no wireframe
 
@@ -37,6 +38,7 @@ export default function UserManagement({ params }: { params: { id: string } }) {
   // Unwrap params usando React.use()
   const unwrappedParams = params
   const clientId = (unwrappedParams as { id: string }).id
+  const { user } = useUserStore()
 
   const [client, setClient] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -177,12 +179,14 @@ export default function UserManagement({ params }: { params: { id: string } }) {
               </div>
             </div>
             <div className='flex items-center space-x-2'>
-              <Link href={`/edit-client/${client.id}`}>
-                <Button size='sm'>
-                  <Edit className='h-4 w-4 mr-2' />
-                  Editar Cliente
-                </Button>
-              </Link>
+              {user?.role === 'admin' && (
+                <Link href={`/edit-client/${client.id}`}>
+                  <Button size='sm'>
+                    <Edit className='h-4 w-4 mr-2' />
+                    Editar Cliente
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </header>

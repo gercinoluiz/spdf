@@ -46,6 +46,7 @@ model User {
   name       String
   login      String    @unique
   email      String?
+  role       String    @default("user") // Novo campo: "user", "manager", "admin"
   status     String    @default("Ativo")
   usage      Int       @default(0)
   lastAccess DateTime?

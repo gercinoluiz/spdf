@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useUserStore } from '@/store/useUserStore'
 import { Search, Users, FileText, Eye, Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -29,12 +31,11 @@ import { Header } from '@/components/header'
 
 // Interface para o tipo de cliente
 interface Client {
-  id: string
+  id: number
   name: string
   contractNumber: string
   status: string
   planId: string
-  // Adicione outros campos conforme necessário
   plan?: {
     name: string
   }
@@ -45,38 +46,66 @@ interface Client {
 }
 
 export default function ClientManagement() {
+  const router = useRouter()
+  const { user } = useUserStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPlan, setSelectedPlan] = useState('all')
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Buscar clientes da API quando o componente montar
+  // Authorization check - redirect non-admins immediately
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/clients')
-
-        if (!response.ok) {
-          throw new Error(`Erro ao buscar clientes: ${response.status}`)
-        }
-
-        const data = await response.json()
-        setClients(data)
-        setError(null)
-      } catch (err) {
-        console.error('Erro ao buscar clientes:', err)
-        setError(
-          'Não foi possível carregar os clientes. Tente novamente mais tarde.',
-        )
-      } finally {
-        setLoading(false)
+    if (user) {
+      if (user.role === 'manager') {
+        router.push(`/clients/${user.clientId}`)
+        return
+      }
+      if (user.role === 'user') {
+        router.push('/')
+        return
       }
     }
+  }, [user, router])
 
-    fetchClients()
-  }, [])
+  // Buscar clientes da API quando o componente montar
+  useEffect(() => {
+    // Only fetch if user is admin
+    if (user && user.role === 'admin') {
+      const fetchClients = async () => {
+        try {
+          setLoading(true)
+          const response = await fetch('/api/clients')
+
+          if (!response.ok) {
+            throw new Error(`Erro ao buscar clientes: ${response.status}`)
+          }
+
+          const data = await response.json()
+          setClients(data)
+          setError(null)
+        } catch (err) {
+          console.error('Erro ao buscar clientes:', err)
+          setError(
+            'Não foi possível carregar os clientes. Tente novamente mais tarde.',
+          )
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      fetchClients()
+    }
+  }, [user])
+
+  // Only show content to admins
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className='flex justify-center items-center min-h-screen'>
+        <div>Redirecionando...</div>
+      </div>
+    )
+  }
 
   // Filtrar clientes com base na busca e no plano selecionado
   const filteredClients = clients.filter((client) => {
@@ -138,8 +167,6 @@ export default function ClientManagement() {
       {/* Header */}
       <Header/>
 
-      
-
       <div className='flex w-full items-center space-x-2 mt-4 mr-4'>
        <div className='ml-auto mr-6 space-x-2'>
          <Button variant='outline' size='sm'>
@@ -147,7 +174,6 @@ export default function ClientManagement() {
           Exportar
         </Button>
         <Link href='/new-client'>
-
         <Button size='sm'>
           <Users className='h-4 w-4 mr-2' />
           Novo Cliente

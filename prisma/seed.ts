@@ -169,6 +169,37 @@ async function main() {
     },
   })
 
+  // Adicionar usuários com diferentes roles
+  const adminUser = await prisma.user.create({
+    data: {
+      name: 'Admin User',
+      login: 'admin',
+      role: 'admin',
+      email: 'admin@example.com',
+      clientId: 1,
+    },
+  })
+  
+  const managerUser = await prisma.user.create({
+    data: {
+      name: 'Manager User',
+      login: 'manager',
+      role: 'manager',
+      email: 'manager@example.com',
+      clientId: 1,
+    },
+  })
+  
+  const regularUser = await prisma.user.create({
+    data: {
+      name: 'Regular User',
+      login: 'user',
+      role: 'user',
+      email: 'user@example.com',
+      clientId: 1,
+    },
+  })
+
   console.log("Seed concluído com sucesso!")
 }
 

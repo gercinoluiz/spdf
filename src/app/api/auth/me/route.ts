@@ -23,7 +23,9 @@ export async function GET() {
     return NextResponse.json({
       id: payload.id,
       name: payload.name,
-      login: payload.login
+      login: payload.login,
+      role: payload.role,
+      clientId: payload.clientId // Add this line
     });
   } catch (error) {
     return NextResponse.json({ error: "Token inválido" }, { status: 401 });

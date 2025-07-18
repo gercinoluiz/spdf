@@ -12,10 +12,16 @@ import {
   UploadCloud,
 } from 'lucide-react'
 
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 /**
  * Represents a sortable thumbnail component for PDF page previews.
- *
+ * 
  * @param {Object} props - The component properties
  * @param {string} props.id - Unique identifier for the thumbnail
  * @param {string} props.previewUrl - URL of the page preview image
@@ -23,7 +29,7 @@ import {
  * @param {number} [props.rotation=0] - Rotation angle of the thumbnail
  * @param {boolean} props.isSelected - Indicates if the thumbnail is currently selected
  * @param {Function} props.onSelect - Callback function for selecting the thumbnail
- *
+ * 
  * @returns {React.ReactElement} A draggable and interactive PDF page thumbnail
  */
 
@@ -174,14 +180,15 @@ export default function PDFManager() {
   const [selectedPageId, setSelectedPageId] = useState(null)
   const [pageRotations, setPageRotations] = useState({})
 
-  const [progress, setProgress] = useState(0)
-  const [progressMessage, setProgressMessage] = useState('')
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [isMerging, setIsMerging] = useState(false)
+  const [isMerging, setIsMerging] = useState(false);
 
-  const [showProgressBar, setShowProgressBar] = useState(false)
+  const [showProgressBar, setShowProgressBar] = useState(false);
 
   useEffect(() => {
     // Function to handle keydown events
@@ -223,7 +230,7 @@ export default function PDFManager() {
         (currentRotation + (direction === 'right' ? 90 : -90) + 360) % 360
       return { ...prev, [selectedPageId]: newRotation }
     })
-
+    
     // // Incrementar uso após rotação
     // incrementUsage()
   }
@@ -242,16 +249,16 @@ export default function PDFManager() {
   }
 
   const handleFileChange = async (e) => {
-    const newFiles = Array.from(e.target.files)
-    if (!newFiles.length) return
+    const newFiles = Array.from(e.target.files);
+    if (!newFiles.length) return;
 
-    setLoadingPdfs(true)
-    setIsLoading(true)
-    setShowProgressBar(false) // Não mostrar barra de progresso para upload
-
+    setLoadingPdfs(true);
+    setIsLoading(true);
+    setShowProgressBar(false); // Não mostrar barra de progresso para upload
+    
     // // Incrementar uso após carregar arquivos
     // incrementUsage();
-
+    
     try {
       setFiles((prev) => [...prev, ...newFiles])
 
@@ -338,7 +345,7 @@ export default function PDFManager() {
       )
     } finally {
       setLoadingPdfs(false)
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -347,7 +354,7 @@ export default function PDFManager() {
     setPages((currentPages) =>
       currentPages.filter((page) => page.id !== idToDelete),
     )
-
+    
     // // Incrementar uso após deletar página
     // incrementUsage()
   }
@@ -365,160 +372,45 @@ export default function PDFManager() {
     const mergedPdf = await PDFDocument.create()
 
     for (const pageData of pages) {
-      if (pageData.isImage) {
-        // Handle image file
-        const imageBytes = await fetch(pageData.previewUrl).then((res) =>
-          res.arrayBuffer(),
-        )
-
-        // Create a new page with A4 dimensions
-        // A4 size in points: 595 × 842 (portrait)
-        const a4Page = mergedPdf.addPage([595, 842])
-
-        let image
-
-        if (pageData.file.type === 'image/jpeg') {
-          image = await mergedPdf.embedJpg(imageBytes)
-        } else if (pageData.file.type === 'image/png') {
-          image = await mergedPdf.embedPng(imageBytes)
-        } else {
-          // For other image types, convert to PNG first
-          const img = new Image()
-          await new Promise((resolve) => {
-            img.onload = resolve
-            img.src = pageData.previewUrl
-          })
-
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0)
-
-          const pngData = await fetch(canvas.toDataURL('image/png')).then(
-            (res) => res.arrayBuffer(),
-          )
-
-          image = await mergedPdf.embedPng(pngData)
-        }
-
-        // Calculate dimensions to fit image within A4 while maintaining aspect ratio
-        const { width: imgWidth, height: imgHeight } = image
-        const pageWidth = a4Page.getWidth()
-        const pageHeight = a4Page.getHeight()
-
-        // Calculate scaling factors
-        const widthScale = pageWidth / imgWidth
-        const heightScale = pageHeight / imgHeight
-
-        // Use the smaller scaling factor to ensure the image fits
-        const scale = Math.min(widthScale, heightScale) * 0.9 // 90% of the page to add margins
-
-        // Calculate dimensions after scaling
-        const scaledWidth = imgWidth * scale
-        const scaledHeight = imgHeight * scale
-
-        // Calculate position to center the image
-        const x = (pageWidth - scaledWidth) / 2
-        const y = (pageHeight - scaledHeight) / 2
-
-        // Draw the image on the page
-        a4Page.drawImage(image, {
-          x,
-          y,
-          width: scaledWidth,
-          height: scaledHeight,
-        })
-
-        // Apply rotation if needed
-        const rotation = pageRotations[pageData.id] || 0
-        if (rotation !== 0) {
-          let pdfRotation
-          switch (rotation) {
-            case 90:
-              pdfRotation = degrees(90)
-              break
-            case 180:
-              pdfRotation = degrees(180)
-              break
-            case 270:
-              pdfRotation = degrees(270)
-              break
-            default:
-              pdfRotation = degrees(0)
-          }
-          a4Page.setRotation(pdfRotation)
-        }
-      } else {
-        // Handle PDF file
-        const arrayBuffer = await pageData.file.arrayBuffer()
-        const pdf = await PDFDocument.load(arrayBuffer)
-        const copiedPage = await mergedPdf.copyPages(pdf, [
-          pageData.pageIndex,
-        ])
-
-        // Apply rotation if needed
-        const rotation = pageRotations[pageData.id] || 0
-        if (rotation !== 0) {
-          let pdfRotation
-          switch (rotation) {
-            case 90:
-              pdfRotation = degrees(90)
-              break
-            case 180:
-              pdfRotation = degrees(180)
-              break
-            case 270:
-              pdfRotation = degrees(270)
-              break
-            default:
-              pdfRotation = degrees(0)
-          }
-          copiedPage[0].setRotation(pdfRotation)
-        }
-
-        mergedPdf.addPage(copiedPage[0])
-      }
+      const arrayBuffer = await pageData.file.arrayBuffer()
+      const pdf = await PDFDocument.load(arrayBuffer)
+      const copiedPage = await mergedPdf.copyPages(pdf, [pageData.pageIndex])
+      mergedPdf.addPage(copiedPage[0])
     }
 
     const mergedPdfBytes = await mergedPdf.save()
-    
-    // Process hyperlinks through Python API
-    const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
-    
-    const blob = new Blob([processedPdfBytes], { type: 'application/pdf' })
-    setMergedPdfSize(blob.size)
-    
+    const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
+
+    setMergedPdfSize(blob.size) // <<<< salva o tamanho!
+
     const url = URL.createObjectURL(blob)
     setMergedPdfUrl(url)
-    
-    return processedPdfBytes
   }
 
   const handleMergePDFs = async () => {
-    if (!pages.length) return
+    if (!pages.length) return;
 
-    setIsMerging(true)
-    setIsLoading(true)
-    setShowProgressBar(true) // Mostrar barra de progresso para mesclagem
-    setProgress(0)
-    setProgressMessage('Iniciando mesclagem de PDFs..')
-
+    setIsMerging(true);
+    setIsLoading(true);
+    setShowProgressBar(true); // Mostrar barra de progresso para mesclagem
+    setProgress(0);
+    setProgressMessage('Iniciando mesclagem de PDFs..');
+    
     try {
-      const mergedPdf = await PDFDocument.create()
-
-      setProgress(10)
-      setProgressMessage('Preparando documento...')
-
+      const mergedPdf = await PDFDocument.create();
+      
+      setProgress(10);
+      setProgressMessage('Preparando documento...');
+      
       // Processar cada página com atualização de progresso
       for (let i = 0; i < pages.length; i++) {
-        const pageData = pages[i]
-
+        const pageData = pages[i];
+        
         // Calcular progresso atual (distribuir 80% do progresso entre as páginas)
-        const pageProgress = 10 + (i / pages.length) * 80
-        setProgress(pageProgress)
-        setProgressMessage(`Processando página ${i + 1} de ${pages.length}...`)
-
+        const pageProgress = 10 + ((i / pages.length) * 80);
+        setProgress(pageProgress);
+        setProgressMessage(`Processando página ${i+1} de ${pages.length}...`);
+        
         if (pageData.isImage) {
           // Handle image file
           const imageBytes = await fetch(pageData.previewUrl).then((res) =>
@@ -634,39 +526,36 @@ export default function PDFManager() {
           mergedPdf.addPage(copiedPage[0])
         }
       }
-
-      setProgress(85)
-      setProgressMessage('Processando hyperlinks...')
-
+      
+      setProgress(90);
+      setProgressMessage('Finalizando documento...');
+      
       const mergedPdfBytes = await mergedPdf.save()
+      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
       
-      // Process hyperlinks
-      const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
+      setProgress(95);
+      setProgressMessage('Gerando URL para download...');
       
-      setProgress(95)
-      setProgressMessage('Finalizando documento...')
-      
-      const blob = new Blob([processedPdfBytes], { type: 'application/pdf' })
-
       setMergedPdfUrl(URL.createObjectURL(blob))
       setOriginalSizeMB((blob.size / (1024 * 1024)).toFixed(2))
       setCompressedBlob(null)
       setCompressedSizeMB(null)
-
-      setProgress(100)
-      setProgressMessage('Mesclagem concluída com hyperlinks processados!')
-
+      
+      setProgress(100);
+      setProgressMessage('Mesclagem concluída!');
+      
       // Aguardar um momento para mostrar 100% antes de esconder a barra
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
     } catch (error) {
       console.error('Erro ao mesclar arquivos:', error)
       alert(
         'Ocorreu um erro ao mesclar os arquivos. Por favor, tente novamente.',
       )
     } finally {
-      setIsMerging(false)
-      setIsLoading(false)
-      setShowProgressBar(false) // Esconder barra de progresso ao finalizar
+      setIsMerging(false);
+      setIsLoading(false);
+      setShowProgressBar(false); // Esconder barra de progresso ao finalizar
     }
   }
 
@@ -677,7 +566,7 @@ export default function PDFManager() {
     }
 
     setCompressing(true)
-
+    
     // Incrementar contador de uso
     incrementUsage()
 
@@ -744,20 +633,15 @@ export default function PDFManager() {
       }
 
       const mergedPdfBytes = await mergedPdf.save()
-      
-      // NEW: Process hyperlinks first
-      const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
-      const processedBlob = new Blob([processedPdfBytes], { type: 'application/pdf' })
+      const mergedBlob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
 
       // Calculate original size
-      const originalSize = processedBlob.size
-      const originalSizeMBValue = (originalSize / (1024 * 1024)).toFixed(2)
-      setOriginalSizeMB(originalSizeMBValue)
-      console.log('🔍 Original size set:', originalSizeMBValue, 'MB') // Add this debug line
+      const originalSize = mergedBlob.size
+      setOriginalSizeMB((originalSize / (1024 * 1024)).toFixed(2))
 
-      // Step 2: Send processed PDF for compression
+      // Step 2: Send for compression
       const formData = new FormData()
-      formData.append('file', processedBlob, 'merged.pdf')
+      formData.append('file', mergedBlob, 'merged.pdf')
       formData.append('pageOrder', JSON.stringify(pages.map((p) => p.id)))
       formData.append('rotations', JSON.stringify(pageRotations))
 
@@ -767,20 +651,12 @@ export default function PDFManager() {
       })
 
       if (!response.ok) {
-        throw new Error(`Erro ao comprimir: ${response.statusText}`)
+        throw new Error(`Erro ao comprimir PDF: ${response.statusText}`)
       }
 
-      const compressedArrayBuffer = await response.arrayBuffer()
-      const compressedBlob = new Blob([compressedArrayBuffer], {
-        type: 'application/pdf',
-      })
-
-      // Calculate compressed size
-      const compressedSize = compressedBlob.size
-      const compressedSizeMBValue = (compressedSize / (1024 * 1024)).toFixed(2)
-      setCompressedSizeMB(compressedSizeMBValue)
-      console.log('🔍 Compressed size set:', compressedSizeMBValue, 'MB') // Add this debug line
+      const compressedBlob = await response.blob()
       setCompressedBlob(compressedBlob)
+      setCompressedSizeMB((compressedBlob.size / (1024 * 1024)).toFixed(2))
 
       console.log('✅ PDF mesclado e comprimido com sucesso!')
     } catch (err) {
@@ -795,51 +671,45 @@ export default function PDFManager() {
 
   const convertPagesToImages = async (format: 'jpg' | 'png') => {
     if (!pages.length) {
-      alert('No pages to convert!')
-      return
+      alert('No pages to convert!');
+      return;
     }
 
     try {
-      setCompressing(true)
-      setIsLoading(true)
-      setShowProgressBar(true) // Mostrar barra de progresso para conversão
-      setProgress(0)
-      setProgressMessage(`Iniciando conversão para ${format.toUpperCase()}...`)
-
+      setCompressing(true);
+      setIsLoading(true);
+      setShowProgressBar(true); // Mostrar barra de progresso para conversão
+      setProgress(0);
+      setProgressMessage(`Iniciando conversão para ${format.toUpperCase()}...`);
+      
       // Incrementar contador de uso
-      incrementUsage()
+      incrementUsage();
 
-      setProgress(5)
-      setProgressMessage('Carregando bibliotecas...')
-
+      setProgress(5);
+      setProgressMessage('Carregando bibliotecas...');
+      
       // Dynamically import JSZip
-      const JSZipModule = await import('jszip')
-      const JSZip = JSZipModule.default
-      const zip = new JSZip()
+      const JSZipModule = await import('jszip');
+      const JSZip = JSZipModule.default;
+      const zip = new JSZip();
 
-      setProgress(10)
-      setProgressMessage('Configurando parâmetros...')
-
+      setProgress(10);
+      setProgressMessage('Configurando parâmetros...');
+      
       // Set image quality and mime type based on format
-      const quality = format === 'jpg' ? 0.9 : 1.0
-      const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
-      const fileExtension = format === 'jpg' ? 'jpg' : 'png'
+      const quality = format === 'jpg' ? 0.9 : 1.0;
+      const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
+      const fileExtension = format === 'jpg' ? 'jpg' : 'png';
 
       // Process each page
       for (let i = 0; i < pages.length; i++) {
-        const page = pages[i]
-
+        const page = pages[i];
+        
         // Calcular progresso atual (distribuir 80% do progresso entre as páginas)
-        const pageProgress = 10 + (i / pages.length) * 80
-        setProgress(pageProgress)
-        setProgressMessage(
-          `Convertendo página ${i + 1} de ${
-            pages.length
-          } para ${format.toUpperCase()}...`,
-        )
-
-        let imageData
-
+        const pageProgress = 10 + ((i / pages.length) * 80);
+        setProgress(pageProgress);
+        setProgressMessage(`Convertendo página ${i+1} de ${pages.length} para ${format.toUpperCase()}...`);
+        
         if (page.isImage) {
           // For image pages, use the existing preview but apply rotation
           const img = new Image()
@@ -936,342 +806,298 @@ export default function PDFManager() {
           array[j] = binary.charCodeAt(j)
         }
 
-        zip.file(
-          `page-${String(i + 1).padStart(2, '0')}.${fileExtension}`,
-          array,
-          { binary: true },
-        )
+        zip.file(`page-${String(i + 1).padStart(2, '0')}.${fileExtension}`, array, { binary: true })
       }
 
-      setProgress(90)
-      setProgressMessage('Gerando arquivo ZIP...')
-
+      setProgress(90);
+      setProgressMessage('Gerando arquivo ZIP...');
+      
       // Generate and download the zip file
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      const zipUrl = URL.createObjectURL(zipBlob)
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipUrl = URL.createObjectURL(zipBlob);
 
-      setProgress(95)
-      setProgressMessage('Preparando download...')
-
+      setProgress(95);
+      setProgressMessage('Preparando download...');
+      
       // Create download link
-      const a = document.createElement('a')
-      a.href = zipUrl
-      a.download = `pdf_pages_as_${fileExtension}.zip`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `pdf_pages_as_${fileExtension}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       // Clean up
-      URL.revokeObjectURL(zipUrl)
+      URL.revokeObjectURL(zipUrl);
 
-      setProgress(100)
-      setProgressMessage(`Conversão para ${format.toUpperCase()} concluída!`)
-
+      setProgress(100);
+      setProgressMessage(`Conversão para ${format.toUpperCase()} concluída!`);
+      
       // Aguardar um momento para mostrar 100% antes de esconder a barra
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       console.log(
         `✅ Successfully converted ${
           pages.length
-        } pages to ${format.toUpperCase()}`,
-      )
-
+        } pages to ${format.toUpperCase()}`
+      );
+      
       // Incrementar uso após a conversão ser concluída
-      incrementUsage()
+      incrementUsage();
     } catch (error) {
-      console.error(`Error converting pages to ${format}:`, error)
+      console.error(`Error converting pages to ${format}:`, error);
       alert(
-        `An error occurred while converting pages to ${format}. Please check the console for details.`,
-      )
+        `An error occurred while converting pages to ${format}. Please check the console for details.`
+      );
     } finally {
-      setCompressing(false)
-      setIsLoading(false)
-      setShowProgressBar(false) // Esconder barra de progresso ao finalizar
+      setCompressing(false);
+      setIsLoading(false);
+      setShowProgressBar(false); // Esconder barra de progresso ao finalizar
     }
   }
 
-  // Adicione esta nova função após a função handleUploadAndCompress
-  const handleMergeAndCompress = async () => {
-    if (!pages.length) {
-      alert('Nenhuma página selecionada!')
-      return
-    }
+  // First, add a state to track the selected quality
+  const [compressionQuality, setCompressionQuality] = useState(null)
 
-    setCompressing(true)
-    setIsLoading(true)
-    setShowProgressBar(true)
-    setProgress(0)
-    setProgressMessage('Iniciando mesclagem e compressão...')
-
-    // Incrementar contador de uso
-    incrementUsage()
-
-    try {
-      // Step 1: Create a merged PDF with both PDFs and images
-      setProgress(5)
-      setProgressMessage('Mesclando páginas...')
-      const mergedPdf = await PDFDocument.create()
-
-      for (let i = 0; i < pages.length; i++) {
-        const pageData = pages[i]
-        
-        // Update progress for merging (0-40%)
-        const mergeProgress = 5 + (i / pages.length) * 35
-        setProgress(mergeProgress)
-        setProgressMessage(`Mesclando página ${i + 1} de ${pages.length}...`)
-
-        if (pageData.isImage) {
-          // Handle image file
-          const imageBytes = await fetch(pageData.previewUrl).then((res) =>
-            res.arrayBuffer(),
-          )
-
-          let image
-          if (pageData.file.type === 'image/jpeg') {
-            image = await mergedPdf.embedJpg(imageBytes)
-          } else if (pageData.file.type === 'image/png') {
-            image = await mergedPdf.embedPng(imageBytes)
-          } else {
-            // For other image types, convert to PNG first
-            const img = new Image()
-            await new Promise((resolve) => {
-              img.onload = resolve
-              img.src = pageData.previewUrl
-            })
-
-            const canvas = document.createElement('canvas')
-            canvas.width = img.width
-            canvas.height = img.height
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, 0, 0)
-
-            const pngData = await fetch(canvas.toDataURL('image/png')).then(
-              (res) => res.arrayBuffer(),
-            )
-
-            image = await mergedPdf.embedPng(pngData)
-          }
-
-          // Create a page with the image dimensions
-          const { width, height } = image
-          const imagePage = mergedPdf.addPage([width, height])
-
-          // Draw the image on the page
-          imagePage.drawImage(image, {
-            x: 0,
-            y: 0,
-            width: width,
-            height: height,
-          })
-        } else {
-          // Handle PDF file
-          const arrayBuffer = await pageData.file.arrayBuffer()
-          const pdf = await PDFDocument.load(arrayBuffer)
-          const copiedPage = await mergedPdf.copyPages(pdf, [
-            pageData.pageIndex,
-          ])
-          mergedPdf.addPage(copiedPage[0])
-        }
-      }
-
-      const mergedPdfBytes = await mergedPdf.save()
-      
-      // Calculate original size
-      const originalSize = mergedPdfBytes.length
-      const originalSizeMBValue = (originalSize / (1024 * 1024))
-      setOriginalSizeMB(originalSizeMBValue)
-      console.log('🔍 Original size set:', originalSizeMBValue.toFixed(2), 'MB')
-
-      setProgress(50)
-      setProgressMessage('Enviando para compressão Python...')
-      
-      // Step 2: Send merged PDF to Python API for compression
-      const formData = new FormData()
-      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
-      formData.append('file', blob, 'merged.pdf')
-
-      // Use Python API on Docker port 5001
-      const response = await fetch('http://localhost:5001/compress', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro na compressão Python')
-      }
-
-      setProgress(90)
-      setProgressMessage('Finalizando compressão...')
-      const compressedArrayBuffer = await response.arrayBuffer()
-      const compressedBlob = new Blob([compressedArrayBuffer], {
-        type: 'application/pdf',
-      })
-
-      // Calculate compressed size
-      const compressedSize = compressedBlob.size
-      const compressedSizeMBValue = (compressedSize / (1024 * 1024))
-      setCompressedSizeMB(compressedSizeMBValue)
-      console.log('🔍 Compressed size set:', compressedSizeMBValue.toFixed(2), 'MB')
-      setCompressedBlob(compressedBlob)
-
-      setProgress(100)
-      setProgressMessage('Mesclagem e compressão concluídas!')
-      
-      // Wait a moment to show 100% before hiding progress bar
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      console.log('✅ PDF mesclado e comprimido com sucesso!')
-    } catch (err) {
-      console.error('❌ Falha ao mesclar e comprimir:', err)
-      alert(
-        `Erro ao mesclar e comprimir o PDF: ${err.message}`,
-      )
-    } finally {
-      setCompressing(false)
-      setIsLoading(false)
-      setShowProgressBar(false)
-    }
-  }
-
-
+  useEffect(() => {
+    setCompressionQuality('high')
+  }, [])
 
   // Modify the compressPdfClientSide function to use the state
-  // Add hyperlink processing function
-  const processHyperlinks = async (pdfBytes) => {
-    try {
-      const formData = new FormData()
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-      formData.append('file', blob, 'document.pdf')
-
-      const response = await fetch('/api/hyperlinks', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        console.warn('Hyperlink processing failed, using original PDF')
-        return pdfBytes
-      }
-
-      return await response.arrayBuffer()
-    } catch (error) {
-      console.warn('Hyperlink processing error, using original PDF:', error)
-      return pdfBytes
-    }
-  }
-
   const compressPdfClientSide = async () => {
-    if (pages.length === 0) {
-      alert('Nenhuma página para comprimir')
-      return
+    if (!pages.length) {
+      alert('Nenhuma página selecionada!');
+      return;
     }
 
-    setCompressing(true)
-    setIsLoading(true)
-    setShowProgressBar(true)
-    setProgress(0)
-    setProgressMessage('Preparando compressão...')
+    setCompressing(true);
+    setIsLoading(true);
+    setShowProgressBar(true); // Mostrar barra de progresso para compressão
+    setProgress(0);
+    setProgressMessage('Iniciando compressão...');
+    
+    // Incrementar contador de uso
+    incrementUsage();
 
     try {
-      // Criar PDF temporário para calcular tamanho original
-      const tempPdf = await PDFDocument.create()
+      // Create a new PDF document
+      setProgress(5);
+      setProgressMessage('Preparando documento...');
+      const newPdf = await PDFDocument.create();
+
+      // Quality settings
+      const settings = {
+        high: { scale: 1.5, quality: 0.9, resolution: 150 },
+        medium: { scale: 1.0, quality: 0.7, resolution: 120 },
+        low: { scale: 0.8, quality: 0.5, resolution: 96 },
+      };
+
+      const {
+        scale,
+        quality: imageQuality,
+        resolution,
+      } = settings[compressionQuality] || settings.high;
+
+      setProgress(10);
+      setProgressMessage('Calculando tamanho original...');
       
+      // Código para calcular tamanho original...
+      
+      // Process each page for compression
       for (let i = 0; i < pages.length; i++) {
-        const pageData = pages[i]
-        setProgress(10 + (i / pages.length) * 30)
-        setProgressMessage(`Calculando tamanho original... (${i + 1}/${pages.length})`)
+        const page = pages[i];
         
-        if (pageData.isImage) {
-          const imageBytes = await fetch(pageData.previewUrl).then((res) =>
+        // Calcular progresso atual (distribuir 80% do progresso entre as páginas)
+        const pageProgress = 10 + ((i / pages.length) * 80);
+        setProgress(pageProgress);
+        setProgressMessage(`Comprimindo página ${i+1} de ${pages.length}...`);
+        
+        if (page.isImage) {
+          // For image pages
+          const img = new Image()
+          await new Promise((resolve) => {
+            img.onload = resolve
+            img.src = page.previewUrl
+          })
+
+          // Create a canvas with appropriate dimensions
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+
+          // Calculate target dimensions based on quality
+          const targetWidth = Math.floor(img.width * scale)
+          const targetHeight = Math.floor(img.height * scale)
+
+          // Set canvas size
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+
+          // Draw image at reduced size
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+
+          // Apply rotation if needed
+          const rotation = pageRotations[page.id] || 0
+          if (rotation !== 0) {
+            // Create a new canvas for the rotated image
+            const rotatedCanvas = document.createElement('canvas')
+            const rotatedCtx = rotatedCanvas.getContext('2d')
+
+            // Swap dimensions for 90/270 degree rotations
+            const swapDimensions = rotation === 90 || rotation === 270
+            rotatedCanvas.width = swapDimensions ? targetHeight : targetWidth
+            rotatedCanvas.height = swapDimensions ? targetWidth : targetHeight
+
+            // Rotate around center
+            rotatedCtx.translate(
+              rotatedCanvas.width / 2,
+              rotatedCanvas.height / 2,
+            )
+            rotatedCtx.rotate((rotation * Math.PI) / 180)
+            rotatedCtx.drawImage(canvas, -targetWidth / 2, -targetHeight / 2)
+
+            // Use the rotated canvas
+            canvas.width = rotatedCanvas.width
+            canvas.height = rotatedCanvas.height
+            ctx.drawImage(rotatedCanvas, 0, 0)
+          }
+
+          // Get compressed image data
+          const compressedImageData = canvas.toDataURL(
+            'image/jpeg',
+            imageQuality,
+          )
+
+          // Convert to binary data
+          const imageBytes = await fetch(compressedImageData).then((res) =>
             res.arrayBuffer(),
           )
-          let image
-          if (pageData.file.type === 'image/jpeg') {
-            image = await tempPdf.embedJpg(imageBytes)
-          } else if (pageData.file.type === 'image/png') {
-            image = await tempPdf.embedPng(imageBytes)
-          } else {
-            const img = new Image()
-            await new Promise((resolve) => {
-              img.onload = resolve
-              img.src = pageData.previewUrl
-            })
-            const canvas = document.createElement('canvas')
-            canvas.width = img.width
-            canvas.height = img.height
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, 0, 0)
-            const pngData = await fetch(canvas.toDataURL('image/png')).then(
-              (res) => res.arrayBuffer(),
-            )
-            image = await tempPdf.embedPng(pngData)
-          }
-          const { width, height } = image
-          const imagePage = tempPdf.addPage([width, height])
-          imagePage.drawImage(image, {
+
+          // Embed in PDF
+          const embeddedImage = await newPdf.embedJpg(imageBytes)
+
+          // Add page with image dimensions
+          const newPage = newPdf.addPage([
+            embeddedImage.width,
+            embeddedImage.height,
+          ])
+
+          // Draw image on page
+          newPage.drawImage(embeddedImage, {
             x: 0,
             y: 0,
-            width: width,
-            height: height,
+            width: embeddedImage.width,
+            height: embeddedImage.height,
           })
         } else {
-          const arrayBuffer = await pageData.file.arrayBuffer()
-          const pdf = await PDFDocument.load(arrayBuffer)
-          const copiedPage = await tempPdf.copyPages(pdf, [pageData.pageIndex])
-          tempPdf.addPage(copiedPage[0])
+          // For PDF pages
+          const arrayBuffer = await page.file.arrayBuffer()
+          const sourcePdf = await getDocument({ data: arrayBuffer }).promise
+          const pdfPage = await sourcePdf.getPage(page.pageIndex + 1)
+
+          // Get original viewport
+          const viewport = pdfPage.getViewport({ scale: 1.0 })
+
+          // Create a canvas with reduced dimensions
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+
+          // Calculate target dimensions based on quality
+          const targetWidth = Math.floor(viewport.width * scale)
+          const targetHeight = Math.floor(viewport.height * scale)
+
+          // Set canvas size
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+
+          // Create scaled viewport
+          const scaledViewport = pdfPage.getViewport({ scale })
+
+          // Render PDF page to canvas at reduced resolution
+          await pdfPage.render({
+            canvasContext: ctx,
+            viewport: scaledViewport,
+          }).promise
+
+          // Get compressed image data
+          const compressedImageData = canvas.toDataURL(
+            'image/jpeg',
+            imageQuality,
+          )
+
+          // Convert to binary data
+          const imageBytes = await fetch(compressedImageData).then((res) =>
+            res.arrayBuffer(),
+          )
+
+          // Embed in PDF
+          const embeddedImage = await newPdf.embedJpg(imageBytes)
+
+          // Add page with original dimensions to maintain aspect ratio
+          const newPage = newPdf.addPage([viewport.width, viewport.height])
+
+          // Draw image on page
+          newPage.drawImage(embeddedImage, {
+            x: 0,
+            y: 0,
+            width: viewport.width,
+            height: viewport.height,
+          })
+
+          // Apply rotation if needed
+          const rotation = pageRotations[page.id] || 0
+          if (rotation !== 0) {
+            let pdfRotation
+            switch (rotation) {
+              case 90:
+                pdfRotation = degrees(90)
+                break
+              case 180:
+                pdfRotation = degrees(180)
+                break
+              case 270:
+                pdfRotation = degrees(270)
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+            newPage.setRotation(pdfRotation)
+          }
         }
       }
       
-      const tempPdfBytes = await tempPdf.save()
-      const originalSizeBytes = tempPdfBytes.length
-      const originalSizeMB = originalSizeBytes / (1024 * 1024)
-      setOriginalSizeMB(parseFloat(originalSizeMB.toFixed(2)))
+      setProgress(90);
+      setProgressMessage('Finalizando documento comprimido...');
       
-      console.log('Tamanho original calculado:', originalSizeMB.toFixed(2), 'MB')
+      // Save the compressed PDF
+      const compressedPdfBytes = await newPdf.save();
+      const compressedBlob = new Blob([compressedPdfBytes], {
+        type: 'application/pdf',
+      });
       
-      // Criar FormData para enviar para a API Python
-      const formData = new FormData()
-      const blob = new Blob([tempPdfBytes], { type: 'application/pdf' })
-      formData.append('file', blob, 'document.pdf')
+      setProgress(95);
+      setProgressMessage('Calculando tamanho final...');
       
-      setProgress(50)
-      setProgressMessage('Comprimindo PDF...')
+      // Update state
+      setCompressedBlob(compressedBlob);
+      setCompressedSizeMB((compressedBlob.size / (1024 * 1024)).toFixed(2));
       
-      // Enviar para a API Python de compressão (Docker na porta 5001)
-      const response = await fetch('http://localhost:5001/compress', {
-        method: 'POST',
-        body: formData,
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro na compressão')
-      }
-      
-      const compressedArrayBuffer = await response.arrayBuffer()
-      const compressedBlob = new Blob([compressedArrayBuffer], { type: 'application/pdf' })
-      
-      const compressedSizeBytes = compressedBlob.size
-      const compressedSizeMB = compressedSizeBytes / (1024 * 1024)
-      
-      setCompressedBlob(compressedBlob)
-      setCompressedSizeMB(compressedSizeMB.toFixed(2))
-      
-      console.log('Compressão concluída:', compressedSizeMB.toFixed(2), 'MB')
-      setProgress(100)
-      setProgressMessage('Compressão concluída!')
+      setProgress(100);
+      setProgressMessage('Compressão concluída!');
       
       // Aguardar um momento para mostrar 100% antes de esconder a barra
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 500));
       
+      console.log('✅ PDF comprimido com sucesso!');
+      // Incrementar contador de uso após compressão bem-sucedida
+      incrementUsage();
+      return compressedBlob;
     } catch (error) {
-      console.error('Erro na compressão:', error)
-      alert(`Erro ao comprimir PDF: ${error.message}`)
+      console.error('Erro ao comprimir PDF:', error);
+      alert('Falha ao comprimir o PDF. Verifique o console para detalhes.');
     } finally {
-      setCompressing(false)
-      setIsLoading(false)
-      setShowProgressBar(false)
+      setCompressing(false);
+      setIsLoading(false);
+      setShowProgressBar(false); // Esconder barra de progresso ao finalizar
     }
   }
 
@@ -1281,18 +1107,18 @@ export default function PDFManager() {
         {/* Lista de páginas */}
         <div className='space-y-4'>
           <div>
-            <div className='flex flex-row flex-wrap items-center justify-center gap-6'>
+            <div className='flex flex-row flex-wrap items-center justify-center gap-8'>
               {/* Botão de carregar arquivos */}
               <div className='flex flex-col items-center justify-center text-gray-400'>
                 <label
                   htmlFor='file-upload'
-                  className='flex flex-col items-center cursor-pointer space-y-1'
+                  className='flex flex-col items-center cursor-pointer space-y-2'
                 >
                   <UploadCloud
-                    size={36}
+                    size={48}
                     className='text-blue-500 hover:text-blue-600 transition'
                   />
-                  <span className='text-blue-600 font-medium text-sm'>
+                  <span className='text-blue-600 font-medium'>
                     {loadingPdfs
                       ? 'Carregando arquivos...'
                       : 'Adicionar PDFs ou imagens'}
@@ -1308,137 +1134,160 @@ export default function PDFManager() {
                   disabled={loadingPdfs}
                 />
               </div>
+
               {/* Botões de rotação */}
               {selectedPageId && (
                 <>
                   <ActionButton
-                    icon={<RotateCcw size={36} />}
-                    label='Girar Esquerda'
+                    icon={<RotateCcw size={48} />}
+                    label="Girar Esquerda"
                     onClick={() => rotateSelectedPage('left')}
-                    color='indigo'
-                    size='small'
+                    color="indigo"
                   />
-
+                  
                   <ActionButton
-                    icon={<RotateCw size={36} />}
-                    label='Girar Direita'
+                    icon={<RotateCw size={48} />}
+                    label="Girar Direita"
                     onClick={() => rotateSelectedPage('right')}
-                    color='indigo'
-                    size='small'
+                    color="indigo"
                   />
                 </>
               )}
+
               {/* Botão de MESCLAR PDFs */}
               <ActionButton
-                icon={<FilePlus size={36} />}
-                label={isMerging ? 'Mesclando...' : 'Mesclar PDFs'}
+                icon={<FilePlus size={48} />}
+                label={isMerging ? "Mesclando..." : "Mesclar PDFs"}
                 onClick={handleMergePDFs}
                 disabled={!pages.length || isMerging}
-                color='green'
-                size='small'
+                color="green"
               />
-              {/* Botão de MESCLAR E COMPRIMIR PDFs */}
-              <ActionButton
-                icon={<FilePlus size={36} />}
-                label={compressing ? 'Mesclando e Comprimindo...' : 'Mesclar e Comprimir'}
-                onClick={handleMergeAndCompress}
-                disabled={!pages.length || compressing || isMerging}
-                color='purple'
-                size='small'
-              />
+
               {/* Botão de Comprimir PDF */}
-              <ActionButton
-                icon={<Shrink size={36} />}
-                label={compressing ? 'Comprimindo...' : 'Comprimir PDF'}
-                onClick={compressPdfClientSide}
-                disabled={!pages.length || compressing || isMerging}
-                color='yellow'
-                size='small'
-              />
+              <div className='flex flex-col items-center justify-center text-gray-400'>
+                <button
+                  onClick={compressPdfClientSide}
+                  disabled={!pages.length || compressing}
+                  className='flex flex-col items-center space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+                  type='button'
+                >
+                  <Shrink
+                    size={48}
+                    className={`${
+                      pages.length
+                        ? 'text-yellow-500 hover:text-yellow-600'
+                        : 'text-gray-300'
+                    } transition`}
+                  />
+                  <span
+                    className={`${
+                      pages.length ? 'text-yellow-600' : 'text-gray-400'
+                    } font-medium`}
+                  >
+                    {compressing ? 'Comprimindo...' : 'Comprimir PDF'}
+                  </span>
+                </button>
+              </div>
+
               {/* Botão para converter páginas para JPG */}
               <ActionButton
                 icon={
-                  <div className='relative'>
+                  <div className="relative">
                     <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      width='36'
-                      height='36'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
-                      <circle cx='8.5' cy='8.5' r='1.5' />
-                      <polyline points='21 15 16 10 5 21' />
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
                     </svg>
-                    <div className='absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-bold px-1 rounded'>
+                    <div className="absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-bold px-1 rounded">
                       JPG
                     </div>
                   </div>
                 }
-                label='Exportar como JPG'
+                label="Exportar como JPG"
                 onClick={() => convertPagesToImages('jpg')}
                 disabled={!pages.length || compressing}
-                color='orange'
-                size='small'
+                color="orange"
               />
               {/* Botão para converter páginas para PNG */}
               <ActionButton
                 icon={
-                  <div className='relative'>
+                  <div className="relative">
                     <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      width='36'
-                      height='36'
-                      viewBox='0 0 24 24'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
-                      <circle cx='8.5' cy='8.5' r='1.5' />
-                      <polyline points='21 15 16 10 5 21' />
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
                     </svg>
-                    <div className='absolute bottom-0 right-0 bg-blue-500 text-white text-xs font-bold px-1 rounded'>
+                    <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-xs font-bold px-1 rounded">
                       PNG
                     </div>
                   </div>
                 }
-                label='Exportar como PNG'
+                label="Exportar como PNG"
                 onClick={() => convertPagesToImages('png')}
                 disabled={!pages.length || compressing}
-                color='blue'
-                size='small'
-              />
-              
-              {/* Divider de largura total */}
-              {(mergedPdfUrl || compressedBlob || pages.length > 0) && (
-                <div className='w-full'>
-                  <hr className='border-gray-200' />
+                color="blue"
+              />              {/* Seletor de qualidade de compressão */}
+              {pages.length > 0 && (
+                <div className="flex flex-col items-center mt-4">
+                  <label htmlFor="quality-select" className="mb-2 text-sm font-medium text-gray-700">
+                    Qualidade da Compressão
+                  </label>
+                  {compressionQuality !== null && (
+                    <Select 
+                      value={compressionQuality}
+                      onValueChange={setCompressionQuality}
+                      disabled={compressing}
+                      
+                    >
+                      <SelectTrigger className="w-[280px]">
+                        <SelectValue placeholder="Selecione a qualidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high"> Alta Qualidade (Tamanho Maior)</SelectItem>
+                        <SelectItem value="medium"> Qualidade Média (Equilibrada)</SelectItem>
+                        <SelectItem value="low">Baixa Qualidade (Tamanho Menor)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               )}
-              
+
               {/* Botão de Baixar PDF Mesclado */}
               {mergedPdfUrl && !compressedBlob && (
                 <ActionButton
-                  icon={<Download size={36} />}
-                  label='Baixar PDF Mesclado'
+                  icon={<Download size={48} />}
+                  label="Baixar PDF Mesclado"
                   href={mergedPdfUrl}
-                  download='pdf_mesclado.pdf'
-                  color='purple'
-                  size='small'
+                  download="pdf_mesclado.pdf"
+                  color="purple"
                 />
               )}
+
               {/* Botão de Baixar PDF Comprimido */}
               {compressedBlob && (
                 <ActionButton
-                  icon={<Download size={36} />}
-                  label='Baixar PDF Comprimido'
+                  icon={<Download size={48} />}
+                  label="Baixar PDF Comprimido"
                   onClick={() => {
                     const url = URL.createObjectURL(compressedBlob)
                     const a = document.createElement('a')
@@ -1448,15 +1297,14 @@ export default function PDFManager() {
                     a.click()
                     document.body.removeChild(a)
                   }}
-                  color='green'
-                  size='small'
+                  color="green"
                 />
               )}
 
               {/* Botão de Deletar todas as páginas */}
               <ActionButton
-                icon={<Trash2 size={36} />}
-                label='Deletar Tudo'
+                icon={<Trash2 size={48} />}
+                label="Deletar Tudo"
                 onClick={() => {
                   // Limpar todos os estados relacionados aos PDFs
                   // Revogar URLs de objetos para liberar memória
@@ -1483,34 +1331,34 @@ export default function PDFManager() {
                   }
                 }}
                 disabled={!pages.length}
-                color='red'
-                size='small'
+                color="red"
               />
 
               {/* Informações sobre tamanho */}
-              {originalSizeMB && originalSizeMB > 0 && (
-                <div className='text-center text-gray-600'>
+              {originalSizeMB && (
+                <div className='text-center mt-4 text-gray-600'>
                   <p>
-                    <strong>Tamanho original:</strong> {typeof originalSizeMB === 'number' ? originalSizeMB.toFixed(2) : parseFloat(originalSizeMB).toFixed(2)} MB
+                    <strong>Tamanho original:</strong> {originalSizeMB} MB
                   </p>
 
-                  {compressedSizeMB && compressedSizeMB > 0 && (
+                  {compressedSizeMB && (
                     <>
-                      <p className='mt-1'>
+                      <p className='mt-2'>
                         <strong>Tamanho após compressão:</strong>{' '}
-                        {typeof compressedSizeMB === 'number' ? compressedSizeMB.toFixed(2) : parseFloat(compressedSizeMB).toFixed(2)} MB
+                        {compressedSizeMB} MB
                       </p>
-                      <p className='mt-1'>
+                      <p className='mt-2'>
                         <strong>Redução:</strong>{' '}
                         {(
-                          (1 - (typeof compressedSizeMB === 'number' ? compressedSizeMB : parseFloat(compressedSizeMB)) / (typeof originalSizeMB === 'number' ? originalSizeMB : parseFloat(originalSizeMB))) * 100
-                        ).toFixed(2)}%
+                          (1 - compressedSizeMB / originalSizeMB) *
+                          100
+                        ).toFixed(2)}
+                        %
                       </p>
                     </>
                   )}
                 </div>
               )}
-
             </div>
 
             <h2 className='text-lg mt-6 font-medium'>
@@ -1519,12 +1367,9 @@ export default function PDFManager() {
 
             <div className='max-h-[500px] mt-6 overflow-y-auto border rounded-md p-4 custom-scrollbar'>
               {isLoading ? (
-                <div
-                  className='w-full flex justify-center items-center'
-                  style={{ minHeight: '300px' }}
-                >
-                  <Spin
-                    progress={progress}
+                <div className='w-full flex justify-center items-center' style={{ minHeight: '300px' }}>
+                  <Spin 
+                    progress={progress} 
                     progressMessage={progressMessage}
                     showProgress={showProgressBar}
                   />

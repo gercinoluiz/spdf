@@ -8,7 +8,7 @@ const prisma = new PrismaClient()
 export async function POST(request: Request) {
   try {
     // Obter o token do cookie
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get('token-spdf')?.value
 
     if (!token) {
