@@ -1,36 +1,167 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SPDF - Sistema de Processamento de Documentos Fiscais
 
-## Getting Started
+## Configuração do Ambiente com Docker
 
-First, run the development server:
+### Pré-requisitos
+- Docker e Docker Compose instalados
+- Node.js e npm instalados
+- Arquivo `.env` configurado
 
+### Comandos Docker
+
+#### 1. Subir o banco de dados PostgreSQL
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker-compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+#### 2. Verificar se o container está rodando
+```bash
+docker-compose ps
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+#### 3. Verificar logs do banco de dados
+```bash
+docker-compose logs -f postgres
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+#### 4. Parar o banco de dados
+```bash
+docker-compose down
+```
 
-## Learn More
+#### 5. Parar e remover volumes (reset completo)
+```bash
+docker-compose down -v
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Comandos da Aplicação
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+#### 1. Instalar dependências
+```bash
+npm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### 2. Executar migrações do Prisma
+```bash
+npx prisma migrate deploy
+```
 
-## Deploy on Vercel
+#### 3. Executar seed do banco de dados
+```bash
+npm run seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### 4. Rodar a aplicação em desenvolvimento
+```bash
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### 5. Abrir Prisma Studio (gerenciador visual do banco)
+```bash
+npx prisma studio
+```
+
+### Sequência Completa de Inicialização
+
+```bash
+# 1. Subir o banco
+docker-compose up -d
+
+# 2. Instalar dependências (se necessário)
+npm install
+
+# 3. Executar migrações
+npx prisma migrate deploy
+
+# 4. Executar seed
+npm run seed
+
+# 5. Rodar a aplicação
+npm run dev
+```
+
+### Informações de Acesso
+
+#### Banco PostgreSQL
+- **Host**: localhost
+- **Porta**: 5432
+- **Database**: nextjs_db
+- **Usuário**: nextjs_user
+- **Senha**: your_password_here
+
+#### Aplicação
+- **URL**: http://localhost:3000
+
+#### Prisma Studio
+- **URL**: http://localhost:5555
+
+### Usuário de Teste Criado no Seed
+- **Nome**: Gercino Luiz da Silva Neto
+- **Login**: p017579
+- **Role**: admin
+- **Senha**: 1234
+
+### Comandos Úteis
+
+#### Resetar banco de dados completamente
+```bash
+docker-compose down -v
+docker-compose up -d
+npx prisma migrate deploy
+npm run seed
+```
+
+#### Verificar status dos containers
+```bash
+docker-compose ps
+```
+
+#### Acessar o container do PostgreSQL
+```bash
+docker-compose exec postgres psql -U nextjs_user -d nextjs_db
+```
+
+#### Backup do banco de dados
+```bash
+docker-compose exec postgres pg_dump -U nextjs_user nextjs_db > backup.sql
+```
+
+#### Restaurar backup
+```bash
+docker-compose exec -T postgres psql -U nextjs_user -d nextjs_db < backup.sql
+```
+
+## Estrutura do Projeto
+
+### Tecnologias Utilizadas
+- **Frontend**: Next.js 14 com TypeScript
+- **Backend**: Next.js API Routes
+- **Banco de Dados**: PostgreSQL
+- **ORM**: Prisma
+- **Autenticação**: JWT
+- **Estilização**: Tailwind CSS
+- **Gerenciamento de Estado**: Zustand
+
+### Arquitetura
+- **Autenticação**: Sistema baseado em roles (admin, manager, user)
+- **Autorização**: Middleware para controle de acesso
+- **Banco de Dados**: Estrutura multi-tenant com clientes
+- **API**: RESTful com Next.js API Routes
+
+### Roles e Permissões
+- **Admin**: Acesso total ao sistema
+- **Manager**: Gerencia apenas seu cliente
+- **User**: Acesso limitado aos próprios dados
+
+## Desenvolvimento
+
+### Scripts Disponíveis
+```bash
+npm run dev          # Rodar em desenvolvimento
+npm run build        # Build para produção
+npm run start        # Rodar build de produção
+npm run lint         # Executar linter
+npm run seed         # Executar seed do banco
+```
+
+### Estrutura de Pastas

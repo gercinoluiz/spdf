@@ -176,7 +176,7 @@ async function main() {
       login: 'admin',
       role: 'admin',
       email: 'admin@example.com',
-      clientId: 1,
+      clientId: client1.id,
     },
   })
   
@@ -186,7 +186,7 @@ async function main() {
       login: 'manager',
       role: 'manager',
       email: 'manager@example.com',
-      clientId: 1,
+      clientId: client1.id,
     },
   })
   
@@ -196,11 +196,26 @@ async function main() {
       login: 'user',
       role: 'user',
       email: 'user@example.com',
-      clientId: 1,
+      clientId: client1.id,
+    },
+  })
+
+  // Adicionar o usuário específico solicitado: Gercino Luiz da Silva Neto
+  const gercinoUser = await prisma.user.create({
+    data: {
+      name: 'Gercino Luiz da Silva Neto',
+      login: 'p017579',
+      role: 'admin',
+      email: 'gercino@example.com',
+      status: 'Ativo',
+      usage: 0,
+      lastAccess: new Date(),
+      clientId: client1.id,
     },
   })
 
   console.log("Seed concluído com sucesso!")
+  console.log(`Usuário criado: ${gercinoUser.name} (${gercinoUser.login})`)
 }
 
 main()
