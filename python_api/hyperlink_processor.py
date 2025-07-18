@@ -207,5 +207,125 @@ def is_valid_url(url):
     except:
         return False
 
+# Add new route for configurable compression
+@app.route('/compress-configurable', methods=['POST'])
+def compress_pdf_configurable():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Get compression level from form data (1=high, 2=medium, 3=low)
+        compression_level = int(request.form.get('compression_level', 2))
+        
+        # Ler o PDF
+        pdf_bytes = file.read()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        
+        print(f"📥 PDF recebido: {len(pdf_bytes) / 1024 / 1024:.2f} MB")
+        print(f"🎚️ Nível de compressão: {compression_level}")
+        
+        # Comprimir o PDF com nível configurável
+        compressed_doc = compress_pdf_configurable_quality(doc, compression_level)
+        
+        # Salvar em buffer
+        output_buffer = io.BytesIO()
+        compressed_doc.save(output_buffer)
+        output_buffer.seek(0)
+        
+        compressed_size = len(output_buffer.getvalue())
+        compression_ratio = ((len(pdf_bytes) - compressed_size) / len(pdf_bytes) * 100)
+        
+        print(f"✅ PDF comprimido: {compressed_size / 1024 / 1024:.2f} MB ({compression_ratio:.1f}% redução)")
+        
+        doc.close()
+        compressed_doc.close()
+        
+        return send_file(
+            output_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='compressed.pdf'
+        )
+        
+    except Exception as e:
+        print(f"❌ Erro na compressão: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+def compress_pdf_configurable_quality(doc, compression_level):
+    """Comprime PDF com qualidade configurável
+    
+    Args:
+        doc: Documento PDF
+        compression_level: 1=Baixa compressão (alta qualidade), 2=Média, 3=Alta compressão (baixa qualidade)
+    """
+    # Configurações MELHORADAS - menos agressivas
+    if compression_level == 1:  # Baixa compressão (alta qualidade) - VERDE
+        matrix_scale = 1.2  # ✅ AUMENTADO de 1.0 para 1.2 (melhor qualidade)
+        jpeg_quality = 95   # ✅ AUMENTADO de 85 para 95 (qualidade quase máxima)
+        quality_name = "Baixa compressão (maior qualidade)"
+    elif compression_level == 2:  # Média compressão - AMARELO
+        matrix_scale = 1.0  # ✅ AUMENTADO de 0.8 para 1.0 (sem redução de escala)
+        jpeg_quality = 80   # ✅ AUMENTADO de 65 para 80 (boa qualidade)
+        quality_name = "Compressão média"
+    else:  # Alta compressão (compression_level == 3) - VERMELHO
+        matrix_scale = 0.8  # ✅ AUMENTADO de 0.6 para 0.8 (menos agressivo)
+        jpeg_quality = 60   # ✅ AUMENTADO de 40 para 60 (qualidade aceitável)
+        quality_name = "Alta compressão (menor qualidade)"
+    
+    print(f"🎯 Usando: {quality_name} (escala: {matrix_scale}, qualidade: {jpeg_quality})")
+    
+    # Criar novo documento comprimido
+    compressed_doc = fitz.open()
+    
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        
+        # Obter links e anotações
+        links = page.get_links()
+        annots = []
+        for annot in page.annots():
+            annots.append(annot)
+        
+        # Criar nova página
+        new_page = compressed_doc.new_page(width=page.rect.width, height=page.rect.height)
+        
+        # Renderizar página com compressão configurável
+        matrix = fitz.Matrix(matrix_scale, matrix_scale)
+        pix = page.get_pixmap(matrix=matrix, alpha=False)
+        
+        # Comprimir como JPEG com qualidade configurável
+        img_data = pix.tobytes("jpeg", jpg_quality=jpeg_quality)
+        
+        # Inserir imagem comprimida
+        img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
+        new_page.insert_image(img_rect, stream=img_data)
+        
+        # Restaurar links
+        for link in links:
+            new_page.insert_link(link)
+        
+        # Restaurar anotações básicas
+        for annot in annots:
+            try:
+                if annot.type[1] in ['Text', 'Highlight', 'Underline', 'StrikeOut']:
+                    new_annot = new_page.add_text_annot(annot.rect.tl, annot.info.get('content', ''))
+                    new_annot.set_info(annot.info)
+            except:
+                pass
+    
+    return compressed_doc
+
+def is_valid_url(url):
+    """Verifica se a URL é válida"""
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except:
+        return False
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

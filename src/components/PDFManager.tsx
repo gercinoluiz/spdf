@@ -12,7 +12,6 @@ import {
   UploadCloud,
 } from 'lucide-react'
 
-
 /**
  * Represents a sortable thumbnail component for PDF page previews.
  *
@@ -37,6 +36,9 @@ import { Card, CardContent } from '@/components/ui/card'
 // import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 // import { Label } from '@/components/ui/label'
+
+import { Slider } from '@/components/ui/slider'
+import { Label } from '@/components/ui/label'
 
 import ActionButton from '@/components/actionButton'
 import Spin from '@/components/spin'
@@ -161,6 +163,8 @@ export default function PDFManager() {
   const [mergedPdfUrl, setMergedPdfUrl] = useState(null)
   const [mergedFileName, setMergedFileName] = useState('merged')
 
+  const [compressionLevel, setCompressionLevel] = useState([2]) // ✅ Já está correto - Médio como padrão
+
   const [mergedPdfSize, setMergedPdfSize] = useState(null) // tamanho do PDF final (em bytes)
 
   const [compressedPdfSize, setCompressedPdfSize] = useState(null) // tamanho do PDF comprimido (opcional)
@@ -203,6 +207,35 @@ export default function PDFManager() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [selectedPageId]) // Re-run effect when selectedPageId changes
+
+  const getCompressionDescription = (level: number) => {
+    switch (level) {
+      case 1:
+        return {
+          name: 'Baixa Compressão',
+          description: 'Maior tamanho, maior qualidade',
+          color: 'text-green-600',
+        }
+      case 2:
+        return {
+          name: 'Compressão Média',
+          description: 'Equilíbrio entre tamanho e qualidade',
+          color: 'text-yellow-600',
+        }
+      case 3:
+        return {
+          name: 'Alta Compressão',
+          description: 'Menor tamanho, menor qualidade',
+          color: 'text-red-600',
+        }
+      default:
+        return {
+          name: 'Compressão Média',
+          description: 'Equilíbrio entre tamanho e qualidade',
+          color: 'text-yellow-600',
+        }
+    }
+  }
 
   const handleSelectPage = (pageId) => {
     // Se clicar na mesma página, deseleciona
@@ -453,9 +486,7 @@ export default function PDFManager() {
         // Handle PDF file
         const arrayBuffer = await pageData.file.arrayBuffer()
         const pdf = await PDFDocument.load(arrayBuffer)
-        const copiedPage = await mergedPdf.copyPages(pdf, [
-          pageData.pageIndex,
-        ])
+        const copiedPage = await mergedPdf.copyPages(pdf, [pageData.pageIndex])
 
         // Apply rotation if needed
         const rotation = pageRotations[pageData.id] || 0
@@ -482,16 +513,16 @@ export default function PDFManager() {
     }
 
     const mergedPdfBytes = await mergedPdf.save()
-    
+
     // Process hyperlinks through Python API
     const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
-    
+
     const blob = new Blob([processedPdfBytes], { type: 'application/pdf' })
     setMergedPdfSize(blob.size)
-    
+
     const url = URL.createObjectURL(blob)
     setMergedPdfUrl(url)
-    
+
     return processedPdfBytes
   }
 
@@ -639,13 +670,13 @@ export default function PDFManager() {
       setProgressMessage('Processando hyperlinks...')
 
       const mergedPdfBytes = await mergedPdf.save()
-      
+
       // Process hyperlinks
       const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
-      
+
       setProgress(95)
       setProgressMessage('Finalizando documento...')
-      
+
       const blob = new Blob([processedPdfBytes], { type: 'application/pdf' })
 
       setMergedPdfUrl(URL.createObjectURL(blob))
@@ -744,10 +775,12 @@ export default function PDFManager() {
       }
 
       const mergedPdfBytes = await mergedPdf.save()
-      
+
       // NEW: Process hyperlinks first
       const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
-      const processedBlob = new Blob([processedPdfBytes], { type: 'application/pdf' })
+      const processedBlob = new Blob([processedPdfBytes], {
+        type: 'application/pdf',
+      })
 
       // Calculate original size
       const originalSize = processedBlob.size
@@ -1014,7 +1047,7 @@ export default function PDFManager() {
 
       for (let i = 0; i < pages.length; i++) {
         const pageData = pages[i]
-        
+
         // Update progress for merging (0-40%)
         const mergeProgress = 5 + (i / pages.length) * 35
         setProgress(mergeProgress)
@@ -1075,23 +1108,24 @@ export default function PDFManager() {
       }
 
       const mergedPdfBytes = await mergedPdf.save()
-      
+
       // Calculate original size
       const originalSize = mergedPdfBytes.length
-      const originalSizeMBValue = (originalSize / (1024 * 1024))
+      const originalSizeMBValue = originalSize / (1024 * 1024)
       setOriginalSizeMB(originalSizeMBValue)
       console.log('🔍 Original size set:', originalSizeMBValue.toFixed(2), 'MB')
 
       setProgress(50)
       setProgressMessage('Enviando para compressão Python...')
-      
+
       // Step 2: Send merged PDF to Python API for compression
       const formData = new FormData()
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
       formData.append('file', blob, 'merged.pdf')
+      formData.append('compression_level', compressionLevel[0].toString()) // ADICIONAR ESTA LINHA
 
       // Use Python API on Docker port 5001
-      const response = await fetch('http://localhost:5001/compress', {
+      const response = await fetch('http://localhost:5001/compress-configurable', {
         method: 'POST',
         body: formData,
       })
@@ -1110,31 +1144,31 @@ export default function PDFManager() {
 
       // Calculate compressed size
       const compressedSize = compressedBlob.size
-      const compressedSizeMBValue = (compressedSize / (1024 * 1024))
+      const compressedSizeMBValue = compressedSize / (1024 * 1024)
       setCompressedSizeMB(compressedSizeMBValue)
-      console.log('🔍 Compressed size set:', compressedSizeMBValue.toFixed(2), 'MB')
+      console.log(
+        '🔍 Compressed size set:',
+        compressedSizeMBValue.toFixed(2),
+        'MB',
+      )
       setCompressedBlob(compressedBlob)
 
       setProgress(100)
       setProgressMessage('Mesclagem e compressão concluídas!')
-      
+
       // Wait a moment to show 100% before hiding progress bar
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       console.log('✅ PDF mesclado e comprimido com sucesso!')
     } catch (err) {
       console.error('❌ Falha ao mesclar e comprimir:', err)
-      alert(
-        `Erro ao mesclar e comprimir o PDF: ${err.message}`,
-      )
+      alert(`Erro ao mesclar e comprimir o PDF: ${err.message}`)
     } finally {
       setCompressing(false)
       setIsLoading(false)
       setShowProgressBar(false)
     }
   }
-
-
 
   // Modify the compressPdfClientSide function to use the state
   // Add hyperlink processing function
@@ -1176,12 +1210,14 @@ export default function PDFManager() {
     try {
       // Criar PDF temporário para calcular tamanho original
       const tempPdf = await PDFDocument.create()
-      
+
       for (let i = 0; i < pages.length; i++) {
         const pageData = pages[i]
         setProgress(10 + (i / pages.length) * 30)
-        setProgressMessage(`Calculando tamanho original... (${i + 1}/${pages.length})`)
-        
+        setProgressMessage(
+          `Calculando tamanho original... (${i + 1}/${pages.length})`,
+        )
+
         if (pageData.isImage) {
           const imageBytes = await fetch(pageData.previewUrl).then((res) =>
             res.arrayBuffer(),
@@ -1222,49 +1258,55 @@ export default function PDFManager() {
           tempPdf.addPage(copiedPage[0])
         }
       }
-      
+
       const tempPdfBytes = await tempPdf.save()
       const originalSizeBytes = tempPdfBytes.length
       const originalSizeMB = originalSizeBytes / (1024 * 1024)
       setOriginalSizeMB(parseFloat(originalSizeMB.toFixed(2)))
-      
-      console.log('Tamanho original calculado:', originalSizeMB.toFixed(2), 'MB')
-      
+
+      console.log(
+        'Tamanho original calculado:',
+        originalSizeMB.toFixed(2),
+        'MB',
+      )
+
       // Criar FormData para enviar para a API Python
       const formData = new FormData()
       const blob = new Blob([tempPdfBytes], { type: 'application/pdf' })
       formData.append('file', blob, 'document.pdf')
-      
+      formData.append('compression_level', compressionLevel[0].toString()) // ADICIONAR ESTA LINHA
+
       setProgress(50)
       setProgressMessage('Comprimindo PDF...')
-      
+
       // Enviar para a API Python de compressão (Docker na porta 5001)
-      const response = await fetch('http://localhost:5001/compress', {
+      const response = await fetch('http://localhost:5001/compress-configurable', {
         method: 'POST',
         body: formData,
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Erro na compressão')
       }
-      
+
       const compressedArrayBuffer = await response.arrayBuffer()
-      const compressedBlob = new Blob([compressedArrayBuffer], { type: 'application/pdf' })
-      
+      const compressedBlob = new Blob([compressedArrayBuffer], {
+        type: 'application/pdf',
+      })
+
       const compressedSizeBytes = compressedBlob.size
       const compressedSizeMB = compressedSizeBytes / (1024 * 1024)
-      
+
       setCompressedBlob(compressedBlob)
       setCompressedSizeMB(compressedSizeMB.toFixed(2))
-      
+
       console.log('Compressão concluída:', compressedSizeMB.toFixed(2), 'MB')
       setProgress(100)
       setProgressMessage('Compressão concluída!')
-      
+
       // Aguardar um momento para mostrar 100% antes de esconder a barra
       await new Promise((resolve) => setTimeout(resolve, 500))
-      
     } catch (error) {
       console.error('Erro na compressão:', error)
       alert(`Erro ao comprimir PDF: ${error.message}`)
@@ -1340,7 +1382,11 @@ export default function PDFManager() {
               {/* Botão de MESCLAR E COMPRIMIR PDFs */}
               <ActionButton
                 icon={<FilePlus size={36} />}
-                label={compressing ? 'Mesclando e Comprimindo...' : 'Mesclar e Comprimir'}
+                label={
+                  compressing
+                    ? 'Mesclando e Comprimindo...'
+                    : 'Mesclar e Comprimir'
+                }
                 onClick={handleMergeAndCompress}
                 disabled={!pages.length || compressing || isMerging}
                 color='purple'
@@ -1415,14 +1461,61 @@ export default function PDFManager() {
                 color='blue'
                 size='small'
               />
-              
+
+              {/* Slider de Compressão - deve aparecer quando há páginas */}
+              {pages.length > 0 && (
+                <div className='w-full mt-6 p-4 border rounded-lg bg-gray-50'>
+                  <div className='space-y-4'>
+                    <div>
+                      <Label className='text-sm font-medium'>
+                        Nível de Compressão
+                      </Label>
+                      <div className='mt-2'>
+                        <Slider
+                          value={compressionLevel}
+                          onValueChange={setCompressionLevel}
+                          max={3}
+                          min={1}
+                          step={1}
+                          className='w-full'
+                        />
+                      </div>
+                      <div className='flex justify-between text-xs text-gray-500 mt-1'>
+                        <span>Baixa</span>
+                        <span>Média</span>
+                        <span>Alta</span>
+                      </div>
+                    </div>
+
+                    <div className='text-center'>
+                      <div
+                        className={`font-medium ${
+                          getCompressionDescription(compressionLevel[0]).color
+                        }`}
+                      >
+                        {getCompressionDescription(compressionLevel[0]).name}
+                      </div>
+                      <div className='text-sm text-gray-600'>
+                        {
+                          getCompressionDescription(compressionLevel[0])
+                            .description
+                        }
+                      </div>
+                      <div className='text-xs text-gray-500 mt-1'>
+                        💡 Maior compressão = menor qualidade visual
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Divider de largura total */}
               {(mergedPdfUrl || compressedBlob || pages.length > 0) && (
                 <div className='w-full'>
                   <hr className='border-gray-200' />
                 </div>
               )}
-              
+
               {/* Botão de Baixar PDF Mesclado */}
               {mergedPdfUrl && !compressedBlob && (
                 <ActionButton
@@ -1491,26 +1584,40 @@ export default function PDFManager() {
               {originalSizeMB && originalSizeMB > 0 && (
                 <div className='text-center text-gray-600'>
                   <p>
-                    <strong>Tamanho original:</strong> {typeof originalSizeMB === 'number' ? originalSizeMB.toFixed(2) : parseFloat(originalSizeMB).toFixed(2)} MB
+                    <strong>Tamanho original:</strong>{' '}
+                    {typeof originalSizeMB === 'number'
+                      ? originalSizeMB.toFixed(2)
+                      : parseFloat(originalSizeMB).toFixed(2)}{' '}
+                    MB
                   </p>
 
                   {compressedSizeMB && compressedSizeMB > 0 && (
                     <>
                       <p className='mt-1'>
                         <strong>Tamanho após compressão:</strong>{' '}
-                        {typeof compressedSizeMB === 'number' ? compressedSizeMB.toFixed(2) : parseFloat(compressedSizeMB).toFixed(2)} MB
+                        {typeof compressedSizeMB === 'number'
+                          ? compressedSizeMB.toFixed(2)
+                          : parseFloat(compressedSizeMB).toFixed(2)}{' '}
+                        MB
                       </p>
                       <p className='mt-1'>
                         <strong>Redução:</strong>{' '}
                         {(
-                          (1 - (typeof compressedSizeMB === 'number' ? compressedSizeMB : parseFloat(compressedSizeMB)) / (typeof originalSizeMB === 'number' ? originalSizeMB : parseFloat(originalSizeMB))) * 100
-                        ).toFixed(2)}%
+                          (1 -
+                            (typeof compressedSizeMB === 'number'
+                              ? compressedSizeMB
+                              : parseFloat(compressedSizeMB)) /
+                              (typeof originalSizeMB === 'number'
+                                ? originalSizeMB
+                                : parseFloat(originalSizeMB))) *
+                          100
+                        ).toFixed(2)}
+                        %
                       </p>
                     </>
                   )}
                 </div>
               )}
-
             </div>
 
             <h2 className='text-lg mt-6 font-medium'>
