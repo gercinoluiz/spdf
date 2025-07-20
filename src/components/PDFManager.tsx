@@ -39,6 +39,12 @@ import { Input } from '@/components/ui/input'
 
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import ActionButton from '@/components/actionButton'
 import Spin from '@/components/spin'
@@ -51,6 +57,14 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Image from 'next/image'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // Configurar worker do PDF.js
 GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`
@@ -187,6 +201,27 @@ export default function PDFManager() {
 
   const [showProgressBar, setShowProgressBar] = useState(false)
 
+  // Novo estado para controlar o modal de download
+  const [showDownloadModal, setShowDownloadModal] = useState(false)
+  const [downloadType, setDownloadType] = useState('') // 'merged' ou 'compressed'
+
+  // Função para fechar o modal e limpar dados
+  const closeDownloadModal = () => {
+    setShowDownloadModal(false)
+    setDownloadType('')
+    
+    // Limpar dados para forçar nova operação
+    if (mergedPdfUrl) {
+      URL.revokeObjectURL(mergedPdfUrl)
+    }
+    setMergedPdfUrl(null)
+    setCompressedBlob(null)
+    setCompressedSizeMB(null)
+    setOriginalSizeMB(null)
+    setMergedPdfSize(null)
+    setCompressedPdfSize(null)
+  }
+
   useEffect(() => {
     // Function to handle keydown events
     const handleKeyDown = (event) => {
@@ -208,7 +243,7 @@ export default function PDFManager() {
     }
   }, [selectedPageId]) // Re-run effect when selectedPageId changes
 
-  const getCompressionDescription = (level: number) => {
+  const getCompressionDescription = (level) => {
     switch (level) {
       case 1:
         return {
@@ -689,6 +724,10 @@ export default function PDFManager() {
 
       // Aguardar um momento para mostrar 100% antes de esconder a barra
       await new Promise((resolve) => setTimeout(resolve, 500))
+      
+      // Abrir modal de download
+      setDownloadType('merged')
+      setShowDownloadModal(true)
     } catch (error) {
       console.error('Erro ao mesclar arquivos:', error)
       alert(
@@ -1149,11 +1188,7 @@ export default function PDFManager() {
       const compressedSize = compressedBlob.size
       const compressedSizeMBValue = compressedSize / (1024 * 1024)
       setCompressedSizeMB(compressedSizeMBValue)
-      console.log(
-        '🔍 Compressed size set:',
-        compressedSizeMBValue.toFixed(2),
-        'MB',
-      )
+      console.log('🔍 Compressed size set:', compressedSizeMBValue.toFixed(2), 'MB')
       setCompressedBlob(compressedBlob)
 
       setProgress(100)
@@ -1161,6 +1196,10 @@ export default function PDFManager() {
 
       // Wait a moment to show 100% before hiding progress bar
       await new Promise((resolve) => setTimeout(resolve, 500))
+      
+      // Abrir modal de download
+      setDownloadType('compressed')
+      setShowDownloadModal(true)
 
       console.log('✅ PDF mesclado e comprimido com sucesso!')
     } catch (err) {
@@ -1313,6 +1352,10 @@ export default function PDFManager() {
 
       // Aguardar um momento para mostrar 100% antes de esconder a barra
       await new Promise((resolve) => setTimeout(resolve, 500))
+      
+      // Abrir modal de download
+      setDownloadType('compressed')
+      setShowDownloadModal(true)
     } catch (error) {
       console.error('Erro na compressão:', error)
       alert(`Erro ao comprimir PDF: ${error.message}`)
@@ -1324,13 +1367,17 @@ export default function PDFManager() {
   }
 
   return (
-    <Card className='max-w-7xl mx-auto p-6 space-y-6 mt-4'>
-      <h2 className='text-lg font-medium mb-4'>
-        Páginas adicionadas ({pages.length})
-      </h2>
+    <Card className='max-w-7xl mx-auto p-6  mt-4'>
+      <div className='w-full flex justify-between'>
+        <h2 className='text-lg font-medium mb-4'>
+          Páginas adicionadas ({pages.length})
+        </h2>
+      </div>
+
       <CardContent className='space-y-6'>
         <div className='flex gap-6'>
           {/* Área principal das páginas - Esquerda */}
+
           <div className='flex-1'>
             <div className='max-h-[600px] overflow-y-auto border rounded-md p-4 custom-scrollbar'>
               {isLoading ? (
@@ -1425,11 +1472,42 @@ export default function PDFManager() {
                     className='w-full'
                   />
                 </div>
-                <div className='flex justify-between text-xs text-gray-500 mt-1'>
-                  <span>Baixa</span>
-                  <span>Média</span>
-                  <span>Alta</span>
-                </div>
+                <TooltipProvider>
+                  <div className='flex justify-between text-xs text-gray-500 mt-1'>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className='cursor-help hover:text-gray-700'>
+                          Baixa
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Baixa compressão = Alta qualidade (arquivo maior)</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className='cursor-help hover:text-gray-700'>
+                          Média
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Compressão média = Qualidade equilibrada</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className='cursor-help hover:text-gray-700'>
+                          Alta
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Alta compressão = Baixa qualidade (arquivo menor)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
                 <div className='text-center mt-2'>
                   <div
                     className={`text-sm font-medium ${
@@ -1450,15 +1528,15 @@ export default function PDFManager() {
                 onClick={handleMergePDFs}
                 disabled={!pages.length || isMerging}
                 color='green'
-                size='small'
+                size='medium'
               />
               <ActionButton
                 icon={<FilePlus size={24} />}
-                label='Mesclar + Comprimir'
+                label='Mesclar e Comprimir'
                 onClick={handleMergeAndCompress}
                 disabled={!pages.length || compressing || isMerging}
                 color='purple'
-                size='small'
+                size='medium'
               />
               <ActionButton
                 icon={<Shrink size={24} />}
@@ -1466,7 +1544,7 @@ export default function PDFManager() {
                 onClick={compressPdfClientSide}
                 disabled={!pages.length || compressing || isMerging}
                 color='yellow'
-                size='small'
+                size='medium'
               />
               <ActionButton
                 icon={<Trash2 size={24} />}
@@ -1498,7 +1576,7 @@ export default function PDFManager() {
                 }}
                 disabled={!pages.length}
                 color='red'
-                size='small'
+                size='medium'
               />
             </div>
 
@@ -1510,14 +1588,14 @@ export default function PDFManager() {
                   label='Girar ←'
                   onClick={() => rotateSelectedPage('left')}
                   color='indigo'
-                  size='small'
+                  size='medium'
                 />
                 <ActionButton
                   icon={<RotateCw size={24} />}
                   label='Girar →'
                   onClick={() => rotateSelectedPage('right')}
                   color='indigo'
-                  size='small'
+                  size='medium'
                 />
               </div>
             )}
@@ -1551,7 +1629,7 @@ export default function PDFManager() {
                 onClick={() => convertPagesToImages('jpg')}
                 disabled={!pages.length || compressing}
                 color='orange'
-                size='small'
+                size='medium'
               />
               <ActionButton
                 icon={
@@ -1580,25 +1658,90 @@ export default function PDFManager() {
                 onClick={() => convertPagesToImages('png')}
                 disabled={!pages.length || compressing}
                 color='blue'
-                size='small'
+                size='medium'
               />
             </div>
-
-            {/* Botões de download */}
-            {mergedPdfUrl && !compressedBlob && (
-              <ActionButton
-                icon={<Download size={24} />}
-                label='Baixar PDF Mesclado'
+          </div>
+        </div>
+      </CardContent>
+      
+      {/* Modal de Download */}
+      <Dialog open={showDownloadModal} onOpenChange={closeDownloadModal}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-center">
+              <Download className="h-5 w-5" />
+              <span>
+                {downloadType === 'merged' ? 'PDF Mesclado Pronto!' : 'PDF Comprimido Pronto!'}
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {downloadType === 'merged' 
+                ? 'Seu PDF foi mesclado com sucesso!' 
+                : 'Seu PDF foi comprimido com sucesso!'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Informações de compressão */}
+          {originalSizeMB && originalSizeMB > 0 && (
+            <div className='text-center text-sm p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border'>
+              <div className="space-y-2">
+                <p className="text-gray-700">
+                  <strong>Tamanho Original:</strong>{' '}
+                  <span className="text-blue-600 font-semibold">
+                    {typeof originalSizeMB === 'number'
+                      ? originalSizeMB.toFixed(2)
+                      : parseFloat(originalSizeMB).toFixed(2)}{' '}
+                    MB
+                  </span>
+                </p>
+                {compressedSizeMB && compressedSizeMB > 0 && (
+                  <>
+                    <p className="text-gray-700">
+                      <strong>Tamanho Final:</strong>{' '}
+                      <span className="text-green-600 font-semibold">
+                        {typeof compressedSizeMB === 'number'
+                          ? compressedSizeMB.toFixed(2)
+                          : parseFloat(compressedSizeMB).toFixed(2)}{' '}
+                        MB
+                      </span>
+                    </p>
+                    <div className=' p-3 rounded-lg'>
+                      <p className='text-green-800 font-bold text-lg'>
+                        🎉 Redução de {(
+                          (1 -
+                            (typeof compressedSizeMB === 'number'
+                              ? compressedSizeMB
+                              : parseFloat(compressedSizeMB)) /
+                              (typeof originalSizeMB === 'number'
+                                ? originalSizeMB
+                                : parseFloat(originalSizeMB))) *
+                          100
+                        ).toFixed(2)}%
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-3">
+            {/* Botão de download para PDF mesclado */}
+            {mergedPdfUrl && downloadType === 'merged' && (
+              <a
                 href={mergedPdfUrl}
                 download='pdf_mesclado.pdf'
-                color='purple'
-                size='small'
-              />
+                className='w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-4 px-6 rounded-lg flex items-center justify-between transition-all duration-200 shadow-lg hover:shadow-xl'
+              >
+                <span className="text-lg">Baixar PDF Mesclado</span>
+                <Download size={24} />
+              </a>
             )}
-            {compressedBlob && (
-              <ActionButton
-                icon={<Download size={24} />}
-                label='Baixar PDF Comprimido'
+            
+            {/* Botão de download para PDF comprimido */}
+            {compressedBlob && downloadType === 'compressed' && (
+              <button
                 onClick={() => {
                   const url = URL.createObjectURL(compressedBlob)
                   const a = document.createElement('a')
@@ -1607,52 +1750,19 @@ export default function PDFManager() {
                   document.body.appendChild(a)
                   a.click()
                   document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
                 }}
-                color='green'
-                size='small'
-              />
+                className='w-full bg-green-600 hover:bg-green-700 text-white font-medium py-4 px-6 rounded-lg flex items-center justify-between transition-all duration-200 shadow-lg hover:shadow-xl'
+              >
+                <span className="text-lg">Baixar PDF Comprimido</span>
+                <Download size={24} />
+              </button>
             )}
-
-            {/* Informações de tamanho */}
-            {originalSizeMB && originalSizeMB > 0 && (
-              <div className='text-center text-sm text-gray-600 p-3 bg-gray-50 rounded'>
-                <p>
-                  <strong>Original:</strong>{' '}
-                  {typeof originalSizeMB === 'number'
-                    ? originalSizeMB.toFixed(2)
-                    : parseFloat(originalSizeMB).toFixed(2)}{' '}
-                  MB
-                </p>
-                {compressedSizeMB && compressedSizeMB > 0 && (
-                  <>
-                    <p>
-                      <strong>Comprimido:</strong>{' '}
-                      {typeof compressedSizeMB === 'number'
-                        ? compressedSizeMB.toFixed(2)
-                        : parseFloat(compressedSizeMB).toFixed(2)}{' '}
-                      MB
-                    </p>
-                    <p>
-                      <strong>Redução:</strong>{' '}
-                      {(
-                        (1 -
-                          (typeof compressedSizeMB === 'number'
-                            ? compressedSizeMB
-                            : parseFloat(compressedSizeMB)) /
-                            (typeof originalSizeMB === 'number'
-                              ? originalSizeMB
-                              : parseFloat(originalSizeMB))) *
-                        100
-                      ).toFixed(2)}
-                      %
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
+            
+     
           </div>
-        </div>
-      </CardContent>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
