@@ -68,9 +68,15 @@ def process_hyperlinks():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
+        # ✅ Novo parâmetro para controlar compressão
+        should_compress = request.form.get('compress', 'true').lower() == 'true'
+        
         # Ler o PDF
         pdf_bytes = file.read()
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        
+        print(f"📥 PDF recebido: {len(pdf_bytes) / 1024 / 1024:.2f} MB")
+        print(f"🔧 Compressão: {'Ativada' if should_compress else 'Desativada'}")
         
         # Processar hyperlinks em cada página
         for page_num in range(len(doc)):
@@ -82,7 +88,6 @@ def process_hyperlinks():
                 if link.get('uri'):
                     uri = link['uri']
                     if not is_valid_url(uri):
-                        # Remover link inválido
                         page.delete_link(link)
             
             # Procurar por texto que parece URL e criar links
@@ -90,7 +95,6 @@ def process_hyperlinks():
             for inst in text_instances:
                 url_text = page.get_textbox(inst).strip()
                 if is_valid_url(url_text):
-                    # Criar novo link
                     link_dict = {
                         "kind": fitz.LINK_URI,
                         "from": inst,
@@ -98,22 +102,28 @@ def process_hyperlinks():
                     }
                     page.insert_link(link_dict)
         
-        # Comprimir o PDF preservando hyperlinks
-        compressed_doc = compress_pdf_with_links(doc)
+        # ✅ Decidir se deve comprimir ou apenas processar hyperlinks
+        if should_compress:
+            processed_doc = compress_pdf_with_links(doc)
+        else:
+            processed_doc = process_hyperlinks_only(doc)
         
         # Salvar em buffer
         output_buffer = io.BytesIO()
-        compressed_doc.save(output_buffer)
+        processed_doc.save(output_buffer)
         output_buffer.seek(0)
         
+        final_size = len(output_buffer.getvalue())
+        print(f"✅ PDF processado: {final_size / 1024 / 1024:.2f} MB")
+        
         doc.close()
-        compressed_doc.close()
+        processed_doc.close()
         
         return send_file(
             output_buffer,
             mimetype='application/pdf',
             as_attachment=True,
-            download_name='compressed_with_links.pdf'
+            download_name='processed_with_links.pdf'
         )
         
     except Exception as e:
@@ -198,6 +208,41 @@ def compress_pdf_with_links(doc):
         # Note: Inserir texto pode ser complexo, por isso mantemos a abordagem de imagem
     
     return compressed_doc
+
+# ✅ Nova função para processar hyperlinks SEM compressão
+def process_hyperlinks_only(doc):
+    """Processa hyperlinks sem compressão - mantém qualidade original"""
+    processed_doc = fitz.open()
+    
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        
+        # Obter links e anotações
+        links = page.get_links()
+        annots = []
+        for annot in page.annots():
+            annots.append(annot)
+        
+        # Criar nova página mantendo dimensões originais
+        new_page = processed_doc.new_page(width=page.rect.width, height=page.rect.height)
+        
+        # ✅ Copiar conteúdo da página SEM compressão
+        new_page.show_pdf_page(page.rect, doc, page_num)
+        
+        # Restaurar todos os links
+        for link in links:
+            new_page.insert_link(link)
+        
+        # Restaurar anotações
+        for annot in annots:
+            try:
+                if annot.type[1] in ['Text', 'Highlight', 'Underline', 'StrikeOut']:
+                    new_annot = new_page.add_text_annot(annot.rect.tl, annot.info.get('content', ''))
+                    new_annot.set_info(annot.info)
+            except:
+                pass
+    
+    return processed_doc
 
 def is_valid_url(url):
     """Verifica se a URL é válida"""

@@ -549,8 +549,8 @@ export default function PDFManager() {
 
     const mergedPdfBytes = await mergedPdf.save()
 
-    // Process hyperlinks through Python API
-    const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
+    // Process hyperlinks through Python API WITHOUT compression
+    const processedPdfBytes = await processHyperlinks(mergedPdfBytes, false)
 
     const blob = new Blob([processedPdfBytes], { type: 'application/pdf' })
     setMergedPdfSize(blob.size)
@@ -706,8 +706,8 @@ export default function PDFManager() {
 
       const mergedPdfBytes = await mergedPdf.save()
 
-      // Process hyperlinks
-      const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
+      // Process hyperlinks WITHOUT compression
+      const processedPdfBytes = await processHyperlinks(mergedPdfBytes, false)
 
       setProgress(95)
       setProgressMessage('Finalizando documento...')
@@ -1214,11 +1214,12 @@ export default function PDFManager() {
 
   // Modify the compressPdfClientSide function to use the state
   // Add hyperlink processing function
-  const processHyperlinks = async (pdfBytes) => {
+  const processHyperlinks = async (pdfBytes, shouldCompress = false) => {
     try {
       const formData = new FormData()
       const blob = new Blob([pdfBytes], { type: 'application/pdf' })
       formData.append('file', blob, 'document.pdf')
+      formData.append('compress', shouldCompress.toString()) // ✅ Novo parâmetro
 
       const response = await fetch('/api/hyperlinks', {
         method: 'POST',

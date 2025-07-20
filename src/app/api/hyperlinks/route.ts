@@ -4,6 +4,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const compress = formData.get('compress') as string; // ✅ Obter parâmetro compress
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
     // Criar FormData para enviar ao Python
     const pythonFormData = new FormData();
     pythonFormData.append('file', file);
+    pythonFormData.append('compress', compress || 'true'); // ✅ Passar parâmetro compress
 
     // Chamar o serviço Python
     const pythonResponse = await fetch('http://localhost:5001/process-hyperlinks', {
