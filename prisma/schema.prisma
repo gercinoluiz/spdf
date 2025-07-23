@@ -11,6 +11,7 @@ model Client {
   id             Int            @id @default(autoincrement())
   name           String
   contractNumber String         @unique
+  totalUsage     Int            @default(0)  // ✅ Add this field
   status         String         @default("Ativo")
   email          String?
   phone          String?

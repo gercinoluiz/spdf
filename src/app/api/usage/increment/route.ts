@@ -33,48 +33,61 @@ export async function POST(request: Request) {
       )
     }
 
-    // Incrementar o uso do usuário
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        usage: {
-          increment: 1
-        }
-      }
-    })
-
-    // Verificar se já existe um registro de uso para o cliente hoje
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const existingUsage = await prisma.usage.findFirst({
-      where: {
-        clientId,
-        date: {
-          gte: today
-        }
-      }
-    })
-
-    if (existingUsage) {
-      // Atualizar o registro existente
-      await prisma.usage.update({
-        where: { id: existingUsage.id },
+    // ✅ Usar transação para garantir consistência
+    await prisma.$transaction(async (tx) => {
+      // Incrementar o uso do usuário
+      await tx.user.update({
+        where: { id: userId },
         data: {
-          value: {
+          usage: {
             increment: 1
           }
         }
       })
-    } else {
-      // Criar um novo registro de uso
-      await prisma.usage.create({
+
+      // ✅ Incrementar o totalUsage do cliente
+      await tx.client.update({
+        where: { id: clientId },
         data: {
-          value: 1,
-          clientId
+          totalUsage: {
+            increment: 1
+          }
         }
       })
-    }
+
+      // Verificar se já existe um registro de uso para o cliente hoje
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      const existingUsage = await tx.usage.findFirst({
+        where: {
+          clientId,
+          date: {
+            gte: today
+          }
+        }
+      })
+
+      if (existingUsage) {
+        // Atualizar o registro existente
+        await tx.usage.update({
+          where: { id: existingUsage.id },
+          data: {
+            value: {
+              increment: 1
+            }
+          }
+        })
+      } else {
+        // Criar um novo registro de uso
+        await tx.usage.create({
+          data: {
+            value: 1,
+            clientId
+          }
+        })
+      }
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

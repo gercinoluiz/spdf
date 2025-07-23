@@ -564,6 +564,9 @@ export default function PDFManager() {
   const handleMergePDFs = async () => {
     if (!pages.length) return
 
+    // ✅ Adicionar esta linha
+    incrementUsage()
+
     setIsMerging(true)
     setIsLoading(true)
     setShowProgressBar(true) // Mostrar barra de progresso para mesclagem
@@ -1047,9 +1050,6 @@ export default function PDFManager() {
           pages.length
         } pages to ${format.toUpperCase()}`,
       )
-
-      // Incrementar uso após a conversão ser concluída
-      incrementUsage()
     } catch (error) {
       console.error(`Error converting pages to ${format}:`, error)
       alert(
@@ -1244,6 +1244,9 @@ export default function PDFManager() {
       return
     }
 
+    // Incrementar contador de uso
+    incrementUsage()
+
     setCompressing(true)
     setIsLoading(true)
     setShowProgressBar(true)
@@ -1368,7 +1371,7 @@ export default function PDFManager() {
   }
 
   return (
-    <Card className='max-w-7xl mx-auto p-6  mt-4'>
+    <Card className='max-w-7xl mx-auto p-6  my-8'>
       <div className='w-full flex justify-between'>
         <h2 className='text-lg font-medium mb-4'>
           Páginas adicionadas ({pages.length})

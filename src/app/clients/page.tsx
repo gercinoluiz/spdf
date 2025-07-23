@@ -36,8 +36,10 @@ interface Client {
   contractNumber: string
   status: string
   planId: string
+  totalUsage: number // Adicionar este campo
   plan?: {
     name: string
+    limit: number // Adicionar limit também
   }
   usage?: {
     value: number
@@ -146,20 +148,16 @@ export default function ClientManagement() {
 
   // Formatar o uso como "valor/limite"
   const formatUsage = (client: Client) => {
-    if (!client.usage || client.usage.length === 0) return '0/0'
-
-    const latestUsage = client.usage[0]
-    const limit = latestUsage.limit || 0
-    return `${latestUsage.value}/${limit}`
+    const limit = client.plan?.limit || 0
+    const usage = client.totalUsage || 0
+    return `${usage}/${limit}`
   }
 
   // Calcular a porcentagem de uso
   const calculateUsagePercentage = (client: Client) => {
-    if (!client.usage || client.usage.length === 0) return 0
-
-    const latestUsage = client.usage[0]
-    const limit = latestUsage.limit || 1 // Evitar divisão por zero
-    return Math.min((latestUsage.value / limit) * 100, 100)
+    const limit = client.plan?.limit || 1 // Evitar divisão por zero
+    const usage = client.totalUsage || 0
+    return Math.min((usage / limit) * 100, 100)
   }
 
   return (
@@ -169,10 +167,10 @@ export default function ClientManagement() {
 
       <div className='flex w-full items-center space-x-2 mt-4 mr-4'>
        <div className='ml-auto mr-6 space-x-2'>
-         <Button variant='outline' size='sm'>
+         {/* <Button variant='outline' size='sm'>
           <Download className='h-4 w-4 mr-2' />
           Exportar
-        </Button>
+        </Button> */}
         <Link href='/new-client'>
         <Button size='sm'>
           <Users className='h-4 w-4 mr-2' />
@@ -255,7 +253,7 @@ export default function ClientManagement() {
                     <TableHead>Plano</TableHead>
                     <TableHead>Uso</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Usuários</TableHead>
+                    {/* <TableHead>Usuários</TableHead> */}
                     <TableHead className='text-right'>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -287,15 +285,15 @@ export default function ClientManagement() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(client.status)}</TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <Button variant='ghost' size='sm'>
                           <Users className='h-4 w-4' />
                         </Button>
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell className='text-right'>
                         <div className='flex justify-end space-x-2'>
-                          <Link href={`/clients/${client.id}`}>
-                            <Button variant='ghost' size='sm'>
+                          <Link href={`/clients/${client.id}`} className='cursor-pointer'>
+                            <Button variant='ghost' size='sm' className='cursor-pointer'>
                               <FileText className='h-4 w-4' />
                             </Button>
                           </Link>

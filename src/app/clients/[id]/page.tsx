@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { use } from 'react'
 import { Search, Edit, ArrowLeft, Plus, Download, Eye } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -28,24 +27,42 @@ import { AddUsersModal } from '@/components/add-users-modal'
 import { EditUserStatusModal } from '@/components/edit-user-status-modal'
 import { useUserStore } from '@/store/useUserStore'
 
-// Dados de exemplo baseados no wireframe
+// Interface do usuário
+interface User {
+  id: number
+  name: string
+  login: string
+  status: string
+  role: string
+  usage: number
+  lastAccess: string | null
+}
 
 const Spin = () => (
   <div className='animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent'></div>
 )
 
-export default function UserManagement({ params }: { params: { id: string } }) {
-  // Unwrap params usando React.use()
-  const unwrappedParams = params
-  const clientId = (unwrappedParams as { id: string }).id
+export default function UserManagement({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useUserStore()
-
+  
+  const [clientId, setClientId] = useState<string | null>(null)
   const [client, setClient] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Resolver params de forma assíncrona
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params
+      setClientId(resolvedParams.id)
+    }
+    resolveParams()
+  }, [params])
+
   const fetchClient = async () => {
+    if (!clientId) return
+    
     try {
       setLoading(true)
       const response = await fetch(`/api/clients/${clientId}`)
@@ -76,11 +93,20 @@ export default function UserManagement({ params }: { params: { id: string } }) {
   }, [clientId])
 
   const handleUsersAdded = () => {
-    // Refresh client data when users are added
     fetchClient()
   }
 
-  if (loading) {
+  const getRoleBadge = (role: string) => {
+    const roleConfig = {
+      admin: { label: 'Admin', variant: 'destructive' as const },
+      manager: { label: 'Gerente', variant: 'default' as const },
+      user: { label: 'Usuário', variant: 'secondary' as const }
+    }
+    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.user
+    return <Badge variant={config.variant}>{config.label}</Badge>
+  }
+
+  if (loading || !clientId) {
     return (
       <div className='flex justify-center items-center min-h-screen'>
         <Spin />
@@ -125,16 +151,16 @@ export default function UserManagement({ params }: { params: { id: string } }) {
   }
 
   const getUsageColor = (uso: string) => {
-    // Verificar se uso é undefined ou null
     if (uso === undefined || uso === null) return 'text-green-600'
 
     const usage = Number.parseInt(uso)
-    if (isNaN(usage)) return 'text-green-600' // Lidar com valores não numéricos
+    if (isNaN(usage)) return 'text-green-600'
 
     if (usage > 200) return 'text-red-600 font-semibold'
     if (usage > 150) return 'text-yellow-600 font-semibold'
     return 'text-green-600'
   }
+  
   const getPlanBadge = (plano: string) => {
     const colors = {
       Ouro: 'bg-yellow-100 text-yellow-800',
@@ -159,8 +185,7 @@ export default function UserManagement({ params }: { params: { id: string } }) {
 
   return (
     <TooltipProvider>
-      <div className='min-h-screen bg-gray-50'>
-        {/* Header */}
+      <div className='min-h-screen bg-gray-50 mb-8'>
         <Header />
         <header className='bg-white border-b border-gray-200 px-6 py-4 mt-2'>
           <div className='flex items-center justify-between'>
@@ -216,16 +241,14 @@ export default function UserManagement({ params }: { params: { id: string } }) {
             <Tooltip>
               <TooltipTrigger>
                 <MyDataCard
-                  title={`${client.usage?.[0]?.value || 0}/${
-                    client.plan?.limit || 0
-                  }`}
+                  title={`${client.totalUsage || 0}/${client.plan?.limit || 0}`}
                   desc={
                     <div className='w-full bg-gray-200 rounded-full h-2 mt-2'>
                       <div
                         className='bg-blue-600 h-2 rounded-full'
                         style={{
                           width: `${Math.min(
-                            ((client.usage?.[0]?.value || 0) /
+                            ((client.totalUsage || 0) /
                               (client.plan?.limit || 1)) *
                               100,
                             100,
@@ -295,6 +318,7 @@ export default function UserManagement({ params }: { params: { id: string } }) {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Login</TableHead>
+                    <TableHead>Role</TableHead>
                     <TableHead>Uso</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Último Acesso</TableHead>
@@ -302,23 +326,16 @@ export default function UserManagement({ params }: { params: { id: string } }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user: any) => (
+                  {filteredUsers.map((user: User) => (
                     <TableRow key={user.id}>
                       <TableCell className='font-medium'>{user.name}</TableCell>
                       <TableCell className='font-mono text-sm bg-gray-50 rounded px-2 py-1 inline-block'>
                         {user.login}
                       </TableCell>
+                      <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
-                        <span
-                          className={`font-mono text-sm ${getUsageColor(
-                            user.usage !== undefined && user.usage !== null
-                              ? user.usage.toString()
-                              : '0',
-                          )}`}
-                        >
-                          {user.usage !== undefined && user.usage !== null
-                            ? user.usage
-                            : '0'}
+                        <span className={`font-mono text-sm ${getUsageColor(user.usage?.toString() || '0')}`}>
+                          {user.usage || 0}
                         </span>
                       </TableCell>
                       <TableCell>{getStatusBadge(user.status)}</TableCell>
@@ -327,13 +344,6 @@ export default function UserManagement({ params }: { params: { id: string } }) {
                       </TableCell>
                       <TableCell className='text-right'>
                         <div className='flex justify-end space-x-2'>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            title='Visualizar usuário'
-                          >
-                            <Eye className='h-4 w-4' />
-                          </Button>
                           <EditUserStatusModal
                             user={user}
                             onUserUpdated={fetchClient}
@@ -375,37 +385,21 @@ export default function UserManagement({ params }: { params: { id: string } }) {
                   <div className='flex justify-between'>
                     <span className='text-sm text-gray-600'>Uso Total:</span>
                     <span className='font-semibold'>
-                      {client.users?.reduce(
-                        (acc: number, user: any) =>
-                          acc +
-                          (user.usage !== undefined && user.usage !== null
-                            ? Number(user.usage)
-                            : 0),
-                        0,
-                      ) || 0}
+                      {client.totalUsage || 0}
                     </span>
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-sm text-gray-600'>Uso Médio:</span>
                     <span className='font-semibold'>
                       {client.users?.length && client.users.length > 0
-                        ? Math.round(
-                            client.users.reduce(
-                              (acc: number, user: any) =>
-                                acc +
-                                (user.usage !== undefined && user.usage !== null
-                                  ? Number(user.usage)
-                                  : 0),
-                              0,
-                            ) / client.users.length,
-                          )
+                        ? Math.round((client.totalUsage || 0) / client.users.length)
                         : 0}
                     </span>
                   </div>
                 </div>
               </CardContent>
             </Card>
-
+{/* 
             <Card>
               <CardHeader>
                 <CardTitle className='text-lg'>Ações Rápidas</CardTitle>
@@ -426,7 +420,7 @@ export default function UserManagement({ params }: { params: { id: string } }) {
                   </Button>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>

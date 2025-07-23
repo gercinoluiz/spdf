@@ -58,7 +58,13 @@ export async function GET() {
 
     const clients = await prisma.client.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        contractNumber: true,
+        status: true,
+        planId: true,
+        totalUsage: true, // Adicionar este campo
         plan: {
           select: {
             name: true,
@@ -81,16 +87,8 @@ export async function GET() {
       },
     })
 
-    // Transform data to include plan limit in usage
-    const clientsWithUsageLimit = clients.map((client) => ({
-      ...client,
-      usage: client.usage.map((usage) => ({
-        ...usage,
-        limit: client.plan?.limit || 0,
-      })),
-    }))
-
-    return NextResponse.json(clientsWithUsageLimit)
+    // Não é mais necessário transformar os dados, pois totalUsage já vem do banco
+    return NextResponse.json(clients)
   } catch (error) {
     console.error('Erro ao buscar clientes:', error)
     return NextResponse.json(

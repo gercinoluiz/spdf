@@ -104,11 +104,11 @@ export const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
 
-                {/* Mostrar configurações para admin e manager */}
+                {/* Mostrar configurações apenas para admin e manager */}
                 {isManagerOrAdmin() && (
                   <>
                     <Link href={user?.role === 'admin' ? '/clients' : `/clients/${user?.clientId}`}>
-                      <DropdownMenuItem className='text-gray-500 text-sm'>
+                      <DropdownMenuItem className='cursor-pointer'>
                         <Settings2Icon className='mr-2 h-4 w-4' />
                         Configurações
                       </DropdownMenuItem>

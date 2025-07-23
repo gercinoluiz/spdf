@@ -11,15 +11,28 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     const client = await prisma.client.findUnique({
       where: { id },
-      include: {
-        plan: true,
-        usage: {
-          orderBy: {
-            date: "desc",
+      select: {
+        id: true,
+        name: true,
+        contractNumber: true,
+        totalUsage: true, // ✅ This is the key field we need!
+        status: true,
+        email: true,
+        phone: true,
+        address: true,
+        city: true,
+        zipCode: true,
+        responsible: true,
+        observations: true,
+        planId: true,
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            limit: true,
+            price: true,
           },
-          take: 1,
         },
-        // Adicione a relação users de forma simplificada
         users: {
           select: {
             id: true,
@@ -27,6 +40,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             login: true,
             status: true,
             lastAccess: true,
+            usage: true,
           },
         },
       },
