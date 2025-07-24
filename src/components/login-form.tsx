@@ -69,6 +69,19 @@ export function LoginForm() {
     }
   }
 
+  const handleOIDCLogin = () => {
+    const oidcUrl = new URL(`${process.env.NEXT_PUBLIC_OIDC_BASE_URL}/auth`)
+    oidcUrl.searchParams.set('client_id', process.env.NEXT_PUBLIC_OIDC_CLIENT_ID!)
+    oidcUrl.searchParams.set('redirect_uri', `${process.env.NEXT_PUBLIC_SPA_BASE_URL}signin-callback`)
+    oidcUrl.searchParams.set('response_type', 'code')
+    oidcUrl.searchParams.set('scope', 'openid offline_access cac:dscplcintr cac api-gch')
+    oidcUrl.searchParams.set('codigosistema', process.env.NEXT_PUBLIC_OIDC_CLIENT_ID!)
+    oidcUrl.searchParams.set('codigogrupo', process.env.NEXT_PUBLIC_CAC_DEFAULT_GRUPO_ID!)
+    oidcUrl.searchParams.set('nomegrupoad', process.env.NEXT_PUBLIC_OIDC_NOME_GRUPO_AD!)
+    
+    window.location.href = oidcUrl.toString()
+  }
+
   return (
     <div className='space-y-6'>
       {/* Header */}
@@ -163,6 +176,14 @@ export function LoginForm() {
                 Fale com seu gestor e solicite uma!
               </Link>
             </p>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleOIDCLogin}
+            >
+              Entrar com OIDC
+            </Button>
           </CardFooter>
         </form>
       </Card>
