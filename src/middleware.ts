@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { auth } from "@/lib/auth"
 
 export async function middleware(request: NextRequest) {
   console.log("Middleware executando para:", request.nextUrl.pathname);
@@ -72,3 +73,39 @@ export const config = {
     '/((?!api/auth|_next|favicon.ico|login).*)',
   ],
 };
+
+export default auth((req) => {
+  const isLoggedIn = !!req.auth
+  const isOnLoginPage = req.nextUrl.pathname.startsWith('/login')
+  const isApiAuthRoute = req.nextUrl.pathname.startsWith('/api/auth')
+  const isPublicFile = req.nextUrl.pathname.startsWith('/_next') || 
+                      req.nextUrl.pathname.includes('favicon.ico')
+
+  // Allow access to public files
+  if (isPublicFile) {
+    return
+  }
+
+  // Allow access to auth API routes
+  if (isApiAuthRoute) {
+    return
+  }
+
+  // If on login page and already logged in, redirect to home
+  if (isOnLoginPage && isLoggedIn) {
+    return Response.redirect(new URL('/', req.url))
+  }
+
+  // If not logged in and not on login page, redirect to login
+  if (!isLoggedIn && !isOnLoginPage) {
+    return Response.redirect(new URL('/login', req.url))
+  }
+
+  return
+})
+
+export const config = {
+  matcher: [
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|login$).*)',
+  ],
+}

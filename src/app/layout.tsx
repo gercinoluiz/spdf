@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Toaster } from 'sonner'
 import './globals.css'
 import { Footer } from '@/components/footer'
-import { Header } from '@/components/header'
+import { SessionProvider } from "next-auth/react"
 
 export const metadata: Metadata = {
   title: 'SPdf',
@@ -11,15 +11,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang='en' className={``}>
+    <html lang="en">
       <body>
-        {children}
-        <Footer />
-        <Toaster richColors position='top-right' />
+        <SessionProvider>
+          {children}
+          <Footer />
+          <Toaster richColors position='top-right' />
+        </SessionProvider>
       </body>
     </html>
   )
