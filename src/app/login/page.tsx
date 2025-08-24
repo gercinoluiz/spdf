@@ -11,7 +11,7 @@ export default function LoginPage() {
     <div className='min-h-screen flex  max-h-80'>
       {/* Left side - Image */}
       <div className='hidden lg:flex lg:w-3/7 relative justify-center items-center flex-col'>
-      <Image src={logo} alt='logo' className='w-200 h-100' />
+      <Image src={logo} alt='logo' className='' />
 
 
       </div>

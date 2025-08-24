@@ -95,7 +95,7 @@ function SortableThumbnail({
   const innerContainerStyle = {
     transform: `rotate(${rotation}deg)`,
     transition: 'transform 0.3s ease',
-    border: isSelected ? '2px solid #374151' : 'none', // Alterado de blue para gray-700
+    border: isSelected ? '2px solid blue' : 'none',
     borderRadius: '4px',
     padding: isSelected ? '2px' : '0',
     height: '100%',
@@ -249,25 +249,25 @@ export default function PDFManager() {
         return {
           name: 'Baixa Compressão',
           description: 'Maior tamanho, maior qualidade',
-          color: 'text-gray-600', // Alterado de text-green-600
+          color: 'text-green-600',
         }
       case 2:
         return {
           name: 'Compressão Média',
           description: 'Equilíbrio entre tamanho e qualidade',
-          color: 'text-gray-700', // Alterado de text-yellow-600
+          color: 'text-yellow-600',
         }
       case 3:
         return {
           name: 'Alta Compressão',
           description: 'Menor tamanho, menor qualidade',
-          color: 'text-gray-800', // Alterado de text-red-600
+          color: 'text-red-600',
         }
       default:
         return {
           name: 'Compressão Média',
           description: 'Equilíbrio entre tamanho e qualidade',
-          color: 'text-gray-700', // Alterado de text-yellow-600
+          color: 'text-yellow-600',
         }
     }
   }
@@ -1165,7 +1165,7 @@ export default function PDFManager() {
 
       // Use Python API on Docker port 5001
       const response = await fetch(
-        '/api/compress-configurable',
+        'http://localhost:5001/compress-configurable',
         {
           method: 'POST',
           body: formData,
@@ -1327,7 +1327,7 @@ export default function PDFManager() {
 
       // Enviar para a API Python de compressão (Docker na porta 5001)
       const response = await fetch(
-        '/api/compress-configurable',
+        'http://localhost:5001/compress-configurable',
         {
           method: 'POST',
           body: formData,
@@ -1441,9 +1441,9 @@ export default function PDFManager() {
               >
                 <UploadCloud
                   size={32}
-                  className='text-gray-600 hover:text-gray-700 transition' // Alterado de text-blue-500 hover:text-blue-600
+                  className='text-blue-500 hover:text-blue-600 transition'
                 />
-                <span className='text-gray-700 font-medium text-sm text-center'> {/* Alterado de text-blue-600 */}
+                <span className='text-blue-600 font-medium text-sm text-center'>
                   {loadingPdfs
                     ? 'Carregando arquivos...'
                     : 'Adicionar PDFs ou imagens'}
@@ -1531,7 +1531,7 @@ export default function PDFManager() {
                 label='Mesclar'
                 onClick={handleMergePDFs}
                 disabled={!pages.length || isMerging}
-                color='gray' // Alterado de 'green'
+                color='green'
                 size='medium'
               />
               <ActionButton
@@ -1539,7 +1539,7 @@ export default function PDFManager() {
                 label='Mesclar e Comprimir'
                 onClick={handleMergeAndCompress}
                 disabled={!pages.length || compressing || isMerging}
-                color='gray' // Alterado de 'purple'
+                color='purple'
                 size='medium'
               />
               <ActionButton
@@ -1547,7 +1547,7 @@ export default function PDFManager() {
                 label='Comprimir'
                 onClick={compressPdfClientSide}
                 disabled={!pages.length || compressing || isMerging}
-                color='gray' // Alterado de 'yellow'
+                color='yellow'
                 size='medium'
               />
               <ActionButton
@@ -1579,7 +1579,7 @@ export default function PDFManager() {
                   }
                 }}
                 disabled={!pages.length}
-                color='gray'
+                color='red'
                 size='medium'
               />
             </div>
@@ -1591,14 +1591,14 @@ export default function PDFManager() {
                   icon={<RotateCcw size={24} />}
                   label='Girar ←'
                   onClick={() => rotateSelectedPage('left')}
-                  color='gray' // Alterado de 'indigo'
+                  color='indigo'
                   size='medium'
                 />
                 <ActionButton
                   icon={<RotateCw size={24} />}
                   label='Girar →'
                   onClick={() => rotateSelectedPage('right')}
-                  color='gray' // Alterado de 'indigo'
+                  color='indigo'
                   size='medium'
                 />
               </div>
@@ -1624,7 +1624,7 @@ export default function PDFManager() {
                       <circle cx='8.5' cy='8.5' r='1.5' />
                       <polyline points='21 15 16 10 5 21' />
                     </svg>
-                    <div className='absolute bottom-0 right-0 bg-gray-600 text-white text-xs font-bold px-1 rounded'> {/* Alterado de bg-orange-500 */}
+                    <div className='absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-bold px-1 rounded'>
                       JPG
                     </div>
                   </div>
@@ -1632,7 +1632,7 @@ export default function PDFManager() {
                 label='Exportar JPG'
                 onClick={() => convertPagesToImages('jpg')}
                 disabled={!pages.length || compressing}
-                color='gray' // Alterado de 'orange'
+                color='orange'
                 size='medium'
               />
               <ActionButton
@@ -1653,7 +1653,7 @@ export default function PDFManager() {
                       <circle cx='8.5' cy='8.5' r='1.5' />
                       <polyline points='21 15 16 10 5 21' />
                     </svg>
-                    <div className='absolute bottom-0 right-0 bg-gray-600 text-white text-xs font-bold px-1 rounded'>
+                    <div className='absolute bottom-0 right-0 bg-blue-500 text-white text-xs font-bold px-1 rounded'>
                       PNG
                     </div>
                   </div>
@@ -1661,8 +1661,7 @@ export default function PDFManager() {
                 label='Exportar PNG'
                 onClick={() => convertPagesToImages('png')}
                 disabled={!pages.length || compressing}
-                color='gray' // Alterado de 'blue'
-                
+                color='blue'
                 size='medium'
               />
             </div>
@@ -1689,11 +1688,11 @@ export default function PDFManager() {
           
           {/* Informações de compressão */}
           {originalSizeMB && originalSizeMB > 0 && (
-            <div className='text-center text-sm p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border'> {/* Alterado de from-blue-50 to-green-50 */}
+            <div className='text-center text-sm p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border'>
               <div className="space-y-2">
                 <p className="text-gray-700">
                   <strong>Tamanho Original:</strong>{' '}
-                  <span className="text-gray-800 font-semibold"> {/* Alterado de text-blue-600 */}
+                  <span className="text-blue-600 font-semibold">
                     {typeof originalSizeMB === 'number'
                       ? originalSizeMB.toFixed(2)
                       : parseFloat(originalSizeMB).toFixed(2)}{' '}
@@ -1704,7 +1703,7 @@ export default function PDFManager() {
                   <>
                     <p className="text-gray-700">
                       <strong>Tamanho Final:</strong>{' '}
-                      <span className="text-gray-900 font-semibold"> {/* Alterado de text-green-600 */}
+                      <span className="text-green-600 font-semibold">
                         {typeof compressedSizeMB === 'number'
                           ? compressedSizeMB.toFixed(2)
                           : parseFloat(compressedSizeMB).toFixed(2)}{' '}
@@ -1712,7 +1711,7 @@ export default function PDFManager() {
                       </span>
                     </p>
                     <div className=' p-3 rounded-lg'>
-                      <p className='text-gray-800 font-bold text-lg'> {/* Alterado de text-green-800 */}
+                      <p className='text-green-800 font-bold text-lg'>
                         🎉 Redução de {(
                           (1 -
                             (typeof compressedSizeMB === 'number'
@@ -1737,7 +1736,7 @@ export default function PDFManager() {
               <a
                 href={mergedPdfUrl}
                 download='pdf_mesclado.pdf'
-                className='w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-4 px-6 rounded-lg flex items-center justify-between transition-all duration-200 shadow-lg hover:shadow-xl' // Alterado de bg-purple-600 hover:bg-purple-700
+                className='w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-4 px-6 rounded-lg flex items-center justify-between transition-all duration-200 shadow-lg hover:shadow-xl'
               >
                 <span className="text-lg">Baixar PDF Mesclado</span>
                 <Download size={24} />
@@ -1757,7 +1756,7 @@ export default function PDFManager() {
                   document.body.removeChild(a)
                   URL.revokeObjectURL(url)
                 }}
-                className='w-full bg-black hover:bg-gray-800 text-white font-medium py-4 px-6 rounded-lg flex items-center justify-between transition-all duration-200 shadow-lg hover:shadow-xl' // Alterado de bg-green-600 hover:bg-green-700
+                className='w-full bg-green-600 hover:bg-green-700 text-white font-medium py-4 px-6 rounded-lg flex items-center justify-between transition-all duration-200 shadow-lg hover:shadow-xl'
               >
                 <span className="text-lg">Baixar PDF Comprimido</span>
                 <Download size={24} />

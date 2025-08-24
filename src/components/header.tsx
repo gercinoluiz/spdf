@@ -5,7 +5,7 @@ import logo from '../../assets/logo.png'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useUserStore } from '@/store/useUserStore'
-import { LogOut, Settings2Icon, User as UserIcon } from 'lucide-react'
+import { LogOut, Settings2Icon, User as UserIcon, UserCog } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -60,13 +60,13 @@ export const Header = () => {
   console.log('HEADER', user)
 
   return (
-    <header className='bg-white border-b border-gray-200 px-6 py-4'>
+    <header className='bg-white border-b border-gray-200 px-6 '>
       <div className='flex items-center justify-between'>
         <div className='flex items-center space-x-4'>
           <div className='flex items-center space-x-2'>
             <div>
               <Link href={'/'}>
-                <Image src={logo} alt='logo' className='w-20 h-10' />
+                <Image src={logo} alt='logo' className='w-20 h-20' />
               </Link>
             </div>
           </div>
@@ -102,6 +102,15 @@ export const Header = () => {
                 <DropdownMenuItem className='text-gray-500 text-sm'>
                   {user.login} ({user.role})
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+
+                {/* Link para o perfil do usuário */}
+                <Link href='/profile'>
+                  <DropdownMenuItem className='cursor-pointer'>
+                    <UserCog className='mr-2 h-4 w-4' />
+                    Meu Perfil
+                  </DropdownMenuItem>
+                </Link>
                 <DropdownMenuSeparator />
 
                 {/* Mostrar configurações apenas para admin e manager */}

@@ -1,29 +1,9 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { SignJWT } from 'jose' // Instale com: npm install jose
+import { SignJWT } from 'jose'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
-
-// Função mock para simular autenticação no Active Directory
-async function mockActiveDirectoryAuth(
-  login: string,
-  password: string,
-): Promise<boolean> {
-  // Credenciais de teste para desenvolvimento
-  const validCredentials = [
-    { login: 'p017579', password: '1234' },
-    { login: 'user1', password: 'user123' },
-    { login: 'user2', password: 'pass123' },
-  ]
-
-  // Simular um pequeno delay como se estivesse fazendo uma chamada externa
-  await new Promise((resolve) => setTimeout(resolve, 500))
-
-  // Verificar se as credenciais são válidas
-  return validCredentials.some(
-    (cred) => cred.login === login && cred.password === password,
-  )
-}
 
 export async function POST(request: Request) {
   try {
@@ -37,51 +17,46 @@ export async function POST(request: Request) {
       )
     }
 
-    // 1. Verificar credenciais no Active Directory (mock)
-    const isValidADCredentials = await mockActiveDirectoryAuth(login, password)
-
-    console.log('Credenciais do AD:', isValidADCredentials)
-
-    if (!isValidADCredentials) {
-      return NextResponse.json(
-        { error: 'Credenciais inválidas no Active Directory' },
-        { status: 401 },
-      )
-    }
-
-    // 2. Verificar se o usuário existe no banco de dados
+    // Verificar se o usuário existe no banco de dados
     const user = await prisma.user.findUnique({
       where: { login },
     })
 
-    // Se o usuário não existir no banco mas foi autenticado no AD, podemos criar um registro básico
     if (!user) {
-      // Opção 1: Retornar erro
       return NextResponse.json(
         { error: 'Usuário não encontrado no sistema' },
         { status: 404 },
       )
     }
 
-    // 3. Gerar token JWT usando jose (compatível com Edge Runtime)
+    // Verificar senha usando bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password)
+
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: 'Credenciais inválidas' },
+        { status: 401 },
+      )
+    }
+
+    // Gerar token JWT
     const secret = new TextEncoder().encode(
       process.env.JWT_SECRET || 'your-secret-key',
     )
 
-    // No momento de gerar o token, incluir o role
     const token = await new SignJWT({
       id: user.id,
       name: user.name,
       login: user.login,
-      role: user.role, // Adicionar role
+      role: user.role,
       clientId: user.clientId,
+      firstLogin: user.firstLogin, // Include firstLogin in JWT
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('24h')
       .sign(secret)
 
-    // 4. Retornar resposta com token em cookie
-
+    // Retornar resposta com token em cookie
     const response = NextResponse.json({
       user: {
         id: user.id,
@@ -89,11 +64,11 @@ export async function POST(request: Request) {
         name: user.name,
         status: user.status,
         role: user.role,
-        clientId: user.clientId, // Add this line
+        clientId: user.clientId,
+        firstLogin: user.firstLogin, // Include firstLogin in response
       },
+      requiresPasswordChange: user.firstLogin, // Flag to indicate password change is required
     })
-
-    console.log(user)
 
     response.cookies.set({
       name: 'token-spdf',

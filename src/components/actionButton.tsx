@@ -7,20 +7,23 @@ interface ActionButtonProps {
   disabled?: boolean
   href?: string
   download?: string
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange' | 'indigo'
+  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange' | 'indigo' | 'gray' | 'slate' | 'black'
   isLoading?: boolean
   type?: 'button' | 'submit' | 'reset'
   size?: 'small' | 'medium' | 'large'
 }
 
 const colorMap = {
-  blue: 'text-blue-500 hover:text-blue-600',
-  green: 'text-green-500 hover:text-green-600',
-  yellow: 'text-yellow-500 hover:text-yellow-600',
-  red: 'text-red-500 hover:text-red-600',
-  purple: 'text-purple-500 hover:text-purple-600',
-  orange: 'text-orange-500 hover:text-orange-600',
-  indigo: 'text-indigo-500 hover:text-indigo-600',
+  blue: 'text-blue-500',
+  green: 'text-green-500',
+  yellow: 'text-yellow-500',
+  red: 'text-red-500',
+  purple: 'text-purple-500',
+  orange: 'text-orange-500',
+  indigo: 'text-indigo-500',
+  gray: 'text-gray-500',
+  slate: 'text-slate-500',
+  black: 'text-black',
 }
 
 export default function ActionButton({
@@ -32,12 +35,12 @@ export default function ActionButton({
   download,
   color,
   isLoading = false,
-
   type = 'button',
   size = 'medium'
 }: ActionButtonProps) {
   const colorClass = disabled ? 'text-gray-300' : colorMap[color]
-  const labelColorClass = disabled ? 'text-gray-400' : `text-${color}-600`
+  const labelColorClass = disabled ? 'text-gray-400' : 
+    `text-${color === 'gray' || color === 'slate' || color === 'black' ? color : color}-600`
   
   const sizeClasses = {
     small: {
@@ -61,12 +64,10 @@ export default function ActionButton({
   
   const content = (
     <>
-
-      <div className={`${colorClass} transition ${iconSize}`}>
+      <div className={`${colorClass} transition-transform duration-300 ${iconSize}`}>
         {icon}
       </div>
-
-      <span className={`${labelColorClass} font-medium ${text}`}>
+      <span className={`${labelColorClass} font-medium ${text} transition-transform duration-300`}>
         {label}
       </span>
     </>
@@ -78,8 +79,7 @@ export default function ActionButton({
         <a
           href={href}
           download={download}
-
-          className={`flex flex-col items-center ${container} cursor-pointer`}
+          className={`flex flex-col items-center ${container} cursor-pointer transition-transform duration-300 hover:scale-105`}
         >
           {content}
         </a>
@@ -92,8 +92,7 @@ export default function ActionButton({
       <button
         onClick={onClick}
         disabled={disabled || isLoading}
-
-        className={`flex flex-col items-center ${container} cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+        className={`flex flex-col items-center ${container} cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-transform duration-300 hover:scale-105 disabled:hover:scale-100`}
         type={type}
       >
         {content}

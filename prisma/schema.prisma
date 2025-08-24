@@ -46,10 +46,12 @@ model User {
   id         Int       @id @default(autoincrement())
   name       String
   login      String    @unique
+  password   String    // New field for database authentication
   email      String?
-  role       String    @default("user") // Novo campo: "user", "manager", "admin"
+  role       String    @default("user") // "user", "manager", "admin"
   status     String    @default("Ativo")
   usage      Int       @default(0)
+  firstLogin Boolean   @default(true)  // Track if this is the user's first login
   lastAccess DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt

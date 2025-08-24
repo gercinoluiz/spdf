@@ -23,7 +23,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+    command:
+  python-api:
+    build: .
+    ports:
+      - "5001:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+  
 volumes:
   postgres_data:
     driver: local

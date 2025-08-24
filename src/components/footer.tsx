@@ -4,7 +4,7 @@ import { Button } from "./ui/button"
 export function Footer() {
   return (
     <footer className="border-t bg-slate-100 fixed bottom-0 w-full">
-      <div className=" flex flex-row w-full bg-slate-600 font-medium text-white">
+      <div className=" flex flex-row w-full bg-black font-medium text-white">
         <div className="flex flex-col items-center w-full gap-4 px-8 md:flex-row md:gap-2 md:px-0">
           <p className="text-center ml-4 text-sm leading-loose  md:text-left font-medium text-white">
             Built by{" PRODAM "}

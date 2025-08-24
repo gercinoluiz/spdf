@@ -52,15 +52,28 @@ export function LoginForm() {
       // Atualizar o store com os dados do usuário
       setUser(data.user)
       
-      // Login bem-sucedido, mostrar toast de sucesso
-      toast.success('Login realizado com sucesso!', {
-        description: 'Redirecionando para a página inicial...',
-      })
-      
-      // Redirecionar para a página inicial
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 1000)
+      // Check if user needs to change password on first login
+      if (data.requiresPasswordChange || data.user.firstLogin) {
+        // Login bem-sucedido, mas precisa trocar senha
+        toast.success('Login realizado com sucesso!', {
+          description: 'Redirecionando para alteração de senha...',
+        })
+        
+        // Redirect to password change page
+        setTimeout(() => {
+          window.location.href = '/change-password'
+        }, 1000)
+      } else {
+        // Login bem-sucedido, mostrar toast de sucesso
+        toast.success('Login realizado com sucesso!', {
+          description: 'Redirecionando para a página inicial...',
+        })
+        
+        // Redirecionar para a página inicial
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1000)
+      }
     } catch (err) {
       console.error('Erro ao fazer login:', err)
       
@@ -195,7 +208,7 @@ export function LoginForm() {
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
             
-            <div className='relative w-full'>
+            {/* <div className='relative w-full'>
               <div className='absolute inset-0 flex items-center'>
                 <span className='w-full border-t' />
               </div>
@@ -204,9 +217,9 @@ export function LoginForm() {
                   Ou
                 </span>
               </div>
-            </div>
+            </div> */}
             
-            <Button
+            {/* <Button
               type='button'
               variant='outline'
               className='w-full'
@@ -214,7 +227,7 @@ export function LoginForm() {
               disabled={isOidcLoading}
             >
               {isOidcLoading ? 'Conectando...' : 'Entrar com OIDC'}
-            </Button>
+            </Button> */}
             
             <p className='text-center text-sm text-muted-foreground'>
               {'Não tem uma conta? '}

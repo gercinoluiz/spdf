@@ -7,12 +7,14 @@ export async function middleware(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.includes('favicon.ico') ||
-    request.nextUrl.pathname.startsWith('/api/auth/')
+    request.nextUrl.pathname.startsWith('/api/auth/') ||
+    request.nextUrl.pathname.startsWith('/api/users/') ||
+    request.nextUrl.pathname.startsWith('/api/')
   ) {
     return NextResponse.next();
   }
 
-  // Permitir acesso à página de login
+  // Permitir acesso APENAS à página de login para usuários não autenticados
   if (request.nextUrl.pathname === '/login') {
     return NextResponse.next();
   }
@@ -31,7 +33,18 @@ export async function middleware(request: NextRequest) {
       process.env.JWT_SECRET || "your-secret-key"
     );
     
-    await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, secret);
+    
+    // Check if user needs to change password and redirect if not on change-password page
+    if (payload.firstLogin && request.nextUrl.pathname !== '/change-password') {
+      return NextResponse.redirect(new URL('/change-password', request.url));
+    }
+    
+    // Se o usuário já trocou a senha e está tentando acessar change-password, redirecionar para home
+    if (!payload.firstLogin && request.nextUrl.pathname === '/change-password') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    
     return NextResponse.next();
   } catch (error) {
     // Token inválido, limpar cookie e redirecionar
