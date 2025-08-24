@@ -173,8 +173,8 @@ def compress_pdf_simple(doc, rotations={}):
         img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
         new_page.insert_image(img_rect, stream=img_data)
         
-        # ✅ APLICAR APENAS A ROTAÇÃO ADICIONAL (não somar com a original)
-        new_page.set_rotation(additional_rotation)
+        # REMOVIDO para evitar rotação dupla:
+        # new_page.set_rotation(additional_rotation)
         
         # Restaurar links
         for link in links:
@@ -215,8 +215,8 @@ def process_hyperlinks_only(doc):
         # ✅ Copiar conteúdo da página SEM compressão
         new_page.show_pdf_page(page.rect, doc, page_num)
         
-        # ✅ APLICAR ROTAÇÃO ORIGINAL
-        new_page.set_rotation(original_rotation)
+        # REMOVIDO para evitar rotação dupla:
+        # new_page.set_rotation(original_rotation)
         
         # Restaurar todos os links
         for link in links:
@@ -260,8 +260,8 @@ def compress_pdf_with_links(doc, rotations={}):
         img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
         new_page.insert_image(img_rect, stream=img_data)
         
-        # ✅ APLICAR ROTAÇÃO ORIGINAL
-        new_page.set_rotation(original_rotation)
+        # REMOVIDO para evitar rotação dupla:
+        # new_page.set_rotation(original_rotation)
         
         # Restaurar todos os links
         for link in links:
@@ -326,6 +326,7 @@ def compress_pdf_configurable_quality(doc, compression_level):
         new_page.insert_image(img_rect, stream=img_data)
         
         # ✅ APLICAR ROTAÇÃO ORIGINAL
+        # REMOVIDO para evitar rotação dupla:
         new_page.set_rotation(original_rotation)
         
         # Restaurar links
