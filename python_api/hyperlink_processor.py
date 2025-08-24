@@ -2,6 +2,7 @@ from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import fitz  # PyMuPDF
 import io
+import json  # ← ADICIONAR ESTA LINHA
 import re
 import requests
 from urllib.parse import urlparse
@@ -25,14 +26,16 @@ def compress_pdf():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
+        rotations = json.loads(request.form.get('rotations', '{}'))
+
         # Ler o PDF
         pdf_bytes = file.read()
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         
         print(f"📥 PDF recebido: {len(pdf_bytes) / 1024 / 1024:.2f} MB")
         
-        # Comprimir o PDF
-        compressed_doc = compress_pdf_simple(doc)
+        # Comprimir o PDF passando as rotações
+        compressed_doc = compress_pdf_simple(doc, rotations)  # ← ADICIONAR rotations
         
         # Salvar em buffer
         output_buffer = io.BytesIO()
@@ -68,8 +71,13 @@ def process_hyperlinks():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
+        # ✅ LER AS ROTAÇÕES
+        rotations = json.loads(request.form.get('rotations', '{}'))
+        
         # ✅ Novo parâmetro para controlar compressão
         should_compress = request.form.get('compress', 'true').lower() == 'true'
+        # ✅ ADICIONAR parâmetro de nível de compressão
+        compression_level = int(request.form.get('compression_level', 2))
         
         # Ler o PDF
         pdf_bytes = file.read()
@@ -104,9 +112,9 @@ def process_hyperlinks():
         
         # ✅ Decidir se deve comprimir ou apenas processar hyperlinks
         if should_compress:
-            processed_doc = compress_pdf_with_links(doc)
+            processed_doc = compress_pdf_with_links(doc, rotations)  # ← PASSAR rotations
         else:
-            processed_doc = process_hyperlinks_only(doc)
+            processed_doc = process_hyperlinks_only(doc)  # Esta não precisa de rotações
         
         # Salvar em buffer
         output_buffer = io.BytesIO()
@@ -129,7 +137,7 @@ def process_hyperlinks():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def compress_pdf_simple(doc):
+def compress_pdf_simple(doc, rotations={}):
     """Comprime PDF de forma simples e eficiente"""
     # Criar novo documento comprimido
     compressed_doc = fitz.open()
@@ -142,6 +150,13 @@ def compress_pdf_simple(doc):
         annots = []
         for annot in page.annots():
             annots.append(annot)
+        
+        # ✅ PRESERVAR ROTAÇÃO ORIGINAL
+        original_rotation = page.rotation
+        
+        # ✅ ADICIONAR NOVA ROTAÇÃO
+        page_id = str(page_num + 1)
+        additional_rotation = rotations.get(page_id, 0)
         
         # Criar nova página
         new_page = compressed_doc.new_page(width=page.rect.width, height=page.rect.height)
@@ -157,6 +172,9 @@ def compress_pdf_simple(doc):
         # Inserir imagem comprimida
         img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
         new_page.insert_image(img_rect, stream=img_data)
+        
+        # ✅ APLICAR APENAS A ROTAÇÃO ADICIONAL (não somar com a original)
+        new_page.set_rotation(additional_rotation)
         
         # Restaurar links
         for link in links:
@@ -175,41 +193,6 @@ def compress_pdf_simple(doc):
     
     return compressed_doc
 
-def compress_pdf_with_links(doc):
-    """Comprime PDF preservando hyperlinks"""
-    # Criar novo documento comprimido
-    compressed_doc = fitz.open()
-    
-    for page_num in range(len(doc)):
-        page = doc[page_num]
-        
-        # Obter links antes da compressão
-        links = page.get_links()
-        
-        # Criar nova página com compressão
-        new_page = compressed_doc.new_page(width=page.rect.width, height=page.rect.height)
-        
-        # Renderizar página com compressão de imagem
-        pix = page.get_pixmap(matrix=fitz.Matrix(1.0, 1.0), alpha=False)
-        
-        # Comprimir imagem (reduzir qualidade para diminuir tamanho)
-        img_data = pix.tobytes("jpeg", jpg_quality=70)
-        
-        # Inserir imagem comprimida
-        img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
-        new_page.insert_image(img_rect, stream=img_data)
-        
-        # Restaurar todos os links
-        for link in links:
-            new_page.insert_link(link)
-        
-        # Copiar texto (para pesquisa)
-        text_dict = page.get_text("dict")
-        # Note: Inserir texto pode ser complexo, por isso mantemos a abordagem de imagem
-    
-    return compressed_doc
-
-# ✅ Nova função para processar hyperlinks SEM compressão
 def process_hyperlinks_only(doc):
     """Processa hyperlinks sem compressão - mantém qualidade original"""
     processed_doc = fitz.open()
@@ -223,11 +206,17 @@ def process_hyperlinks_only(doc):
         for annot in page.annots():
             annots.append(annot)
         
+        # ✅ PRESERVAR ROTAÇÃO ORIGINAL
+        original_rotation = page.rotation
+        
         # Criar nova página mantendo dimensões originais
         new_page = processed_doc.new_page(width=page.rect.width, height=page.rect.height)
         
         # ✅ Copiar conteúdo da página SEM compressão
         new_page.show_pdf_page(page.rect, doc, page_num)
+        
+        # ✅ APLICAR ROTAÇÃO ORIGINAL
+        new_page.set_rotation(original_rotation)
         
         # Restaurar todos os links
         for link in links:
@@ -244,61 +233,45 @@ def process_hyperlinks_only(doc):
     
     return processed_doc
 
-def is_valid_url(url):
-    """Verifica se a URL é válida"""
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except:
-        return False
-
-# Add new route for configurable compression
-@app.route('/compress-configurable', methods=['POST'])
-def compress_pdf_configurable():
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
+def compress_pdf_with_links(doc, rotations={}):
+    """Comprime PDF preservando hyperlinks"""
+    # Criar novo documento comprimido
+    compressed_doc = fitz.open()
+    
+    for page_num in range(len(doc)):
+        page = doc[page_num]
         
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+        # Obter links antes da compressão
+        links = page.get_links()
         
-        # Get compression level from form data (1=high, 2=medium, 3=low)
-        compression_level = int(request.form.get('compression_level', 2))
+        # ✅ PRESERVAR ROTAÇÃO ORIGINAL
+        original_rotation = page.rotation
         
-        # Ler o PDF
-        pdf_bytes = file.read()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        # Criar nova página com compressão
+        new_page = compressed_doc.new_page(width=page.rect.width, height=page.rect.height)
         
-        print(f"📥 PDF recebido: {len(pdf_bytes) / 1024 / 1024:.2f} MB")
-        print(f"🎚️ Nível de compressão: {compression_level}")
+        # Renderizar página com compressão de imagem
+        pix = page.get_pixmap(matrix=fitz.Matrix(1.0, 1.0), alpha=False)
         
-        # Comprimir o PDF com nível configurável
-        compressed_doc = compress_pdf_configurable_quality(doc, compression_level)
+        # Comprimir imagem (reduzir qualidade para diminuir tamanho)
+        img_data = pix.tobytes("jpeg", jpg_quality=70)
         
-        # Salvar em buffer
-        output_buffer = io.BytesIO()
-        compressed_doc.save(output_buffer)
-        output_buffer.seek(0)
+        # Inserir imagem comprimida
+        img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
+        new_page.insert_image(img_rect, stream=img_data)
         
-        compressed_size = len(output_buffer.getvalue())
-        compression_ratio = ((len(pdf_bytes) - compressed_size) / len(pdf_bytes) * 100)
+        # ✅ APLICAR ROTAÇÃO ORIGINAL
+        new_page.set_rotation(original_rotation)
         
-        print(f"✅ PDF comprimido: {compressed_size / 1024 / 1024:.2f} MB ({compression_ratio:.1f}% redução)")
+        # Restaurar todos os links
+        for link in links:
+            new_page.insert_link(link)
         
-        doc.close()
-        compressed_doc.close()
-        
-        return send_file(
-            output_buffer,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name='compressed.pdf'
-        )
-        
-    except Exception as e:
-        print(f"❌ Erro na compressão: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        # Copiar texto (para pesquisa)
+        text_dict = page.get_text("dict")
+        # Note: Inserir texto pode ser complexo, por isso mantemos a abordagem de imagem
+    
+    return compressed_doc
 
 def compress_pdf_configurable_quality(doc, compression_level):
     """Comprime PDF com qualidade configurável
@@ -335,6 +308,9 @@ def compress_pdf_configurable_quality(doc, compression_level):
         for annot in page.annots():
             annots.append(annot)
         
+        # ✅ PRESERVAR ROTAÇÃO ORIGINAL
+        original_rotation = page.rotation
+        
         # Criar nova página
         new_page = compressed_doc.new_page(width=page.rect.width, height=page.rect.height)
         
@@ -348,6 +324,9 @@ def compress_pdf_configurable_quality(doc, compression_level):
         # Inserir imagem comprimida
         img_rect = fitz.Rect(0, 0, page.rect.width, page.rect.height)
         new_page.insert_image(img_rect, stream=img_data)
+        
+        # ✅ APLICAR ROTAÇÃO ORIGINAL
+        new_page.set_rotation(original_rotation)
         
         # Restaurar links
         for link in links:

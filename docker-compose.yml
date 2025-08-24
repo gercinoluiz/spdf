@@ -23,16 +23,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    command:
+
   python-api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spdf-python-api
+    restart: unless-stopped
     ports:
       - "5001:5000"
     volumes:
-      - .:/app
+      - ./python_api:/app
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+    networks:
+      - spdf-network
+    working_dir: /app
+    command: python hyperlink_processor.py
   
 volumes:
   postgres_data:

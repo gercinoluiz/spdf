@@ -499,24 +499,27 @@ export default function PDFManager() {
         })
 
         // Apply rotation if needed
-        const rotation = pageRotations[pageData.id] || 0
-        if (rotation !== 0) {
-          let pdfRotation
-          switch (rotation) {
-            case 90:
-              pdfRotation = degrees(90)
-              break
-            case 180:
-              pdfRotation = degrees(180)
-              break
-            case 270:
-              pdfRotation = degrees(270)
-              break
-            default:
-              pdfRotation = degrees(0)
-          }
-          a4Page.setRotation(pdfRotation)
-        }
+              const rotation = pageRotations[pageData.id] || 0
+              console.log('🔍 DEBUG - Imagem:', pageData.id, 'Rotação CSS:', rotation)
+              if (rotation !== 0) {
+                let pdfRotation
+                // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
+                switch (rotation) {
+                  case 90:  // direita no CSS
+                    pdfRotation = degrees(90)   // direita no PDF
+                    break
+                  case 180: // baixo no CSS  
+                    pdfRotation = degrees(180) // baixo no PDF
+                    break
+                  case 270: // esquerda no CSS
+                    pdfRotation = degrees(270) // esquerda no PDF
+                    break
+                  default:
+                    pdfRotation = degrees(0)
+                }
+                console.log('🔍 DEBUG - Aplicando rotação PDF (imagem):', pdfRotation)
+                a4Page.setRotation(pdfRotation)
+              }
       } else {
         // Handle PDF file
         const arrayBuffer = await pageData.file.arrayBuffer()
@@ -524,24 +527,27 @@ export default function PDFManager() {
         const copiedPage = await mergedPdf.copyPages(pdf, [pageData.pageIndex])
 
         // Apply rotation if needed
-        const rotation = pageRotations[pageData.id] || 0
-        if (rotation !== 0) {
-          let pdfRotation
-          switch (rotation) {
-            case 90:
-              pdfRotation = degrees(90)
-              break
-            case 180:
-              pdfRotation = degrees(180)
-              break
-            case 270:
-              pdfRotation = degrees(270)
-              break
-            default:
-              pdfRotation = degrees(0)
+          const rotation = pageRotations[pageData.id] || 0
+          console.log('🔍 DEBUG - Página (handleMergePDFs):', pageData.id, 'Rotação CSS:', rotation)
+          if (rotation !== 0) {
+            let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
+            switch (rotation) {
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
+                break
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
+                break
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+            console.log('🔍 DEBUG - Aplicando rotação PDF (handleMergePDFs):', pdfRotation)
+            copiedPage[0].setRotation(pdfRotation)
           }
-          copiedPage[0].setRotation(pdfRotation)
-        }
 
         mergedPdf.addPage(copiedPage[0])
       }
@@ -550,7 +556,7 @@ export default function PDFManager() {
     const mergedPdfBytes = await mergedPdf.save()
 
     // Process hyperlinks through Python API WITHOUT compression
-    const processedPdfBytes = await processHyperlinks(mergedPdfBytes, false)
+      const processedPdfBytes = await processHyperlinks(mergedPdfBytes, false, compressionLevel[0])
 
     const blob = new Blob([processedPdfBytes], { type: 'application/pdf' })
     setMergedPdfSize(blob.size)
@@ -657,15 +663,16 @@ export default function PDFManager() {
           const rotation = pageRotations[pageData.id] || 0
           if (rotation !== 0) {
             let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
             switch (rotation) {
-              case 90:
-                pdfRotation = degrees(90)
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
                 break
-              case 180:
-                pdfRotation = degrees(180)
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
                 break
-              case 270:
-                pdfRotation = degrees(270)
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
                 break
               default:
                 pdfRotation = degrees(0)
@@ -682,21 +689,24 @@ export default function PDFManager() {
 
           // Apply rotation if needed
           const rotation = pageRotations[pageData.id] || 0
+          console.log('🔍 DEBUG - Página:', pageData.id, 'Rotação CSS:', rotation)
           if (rotation !== 0) {
             let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
             switch (rotation) {
-              case 90:
-                pdfRotation = degrees(90)
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
                 break
-              case 180:
-                pdfRotation = degrees(180)
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
                 break
-              case 270:
-                pdfRotation = degrees(270)
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
                 break
               default:
                 pdfRotation = degrees(0)
             }
+            console.log('🔍 DEBUG - Aplicando rotação PDF corrigida:', pdfRotation)
             copiedPage[0].setRotation(pdfRotation)
           }
 
@@ -710,7 +720,7 @@ export default function PDFManager() {
       const mergedPdfBytes = await mergedPdf.save()
 
       // Process hyperlinks WITHOUT compression
-      const processedPdfBytes = await processHyperlinks(mergedPdfBytes, false)
+      const processedPdfBytes = await processHyperlinks(mergedPdfBytes, false, compressionLevel[0])
 
       setProgress(95)
       setProgressMessage('Finalizando documento...')
@@ -798,6 +808,29 @@ export default function PDFManager() {
           const { width, height } = image
           imagePage = mergedPdf.addPage([width, height])
 
+          // ✅ APLICAR ROTAÇÃO PARA IMAGENS
+          const rotation = pageRotations[pageData.id] || 0
+          console.log('🔍 DEBUG - Imagem (handleUploadAndCompress):', pageData.id, 'Rotação CSS:', rotation)
+          if (rotation !== 0) {
+            let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
+            switch (rotation) {
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
+                break
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
+                break
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+            console.log('🔍 DEBUG - Aplicando rotação PDF (imagem handleUploadAndCompress):', pdfRotation)
+            imagePage.setRotation(pdfRotation)
+          }
+
           // Draw the image on the page
           imagePage.drawImage(image, {
             x: 0,
@@ -812,6 +845,30 @@ export default function PDFManager() {
           const copiedPage = await mergedPdf.copyPages(pdf, [
             pageData.pageIndex,
           ])
+
+          // ✅ APLICAR ROTAÇÃO PARA PDFs
+          const rotation = pageRotations[pageData.id] || 0
+          console.log('🔍 DEBUG - PDF (handleUploadAndCompress):', pageData.id, 'Rotação CSS:', rotation)
+          if (rotation !== 0) {
+            let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
+            switch (rotation) {
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
+                break
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
+                break
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+            console.log('🔍 DEBUG - Aplicando rotação PDF corrigida (handleUploadAndCompress):', pdfRotation)
+            copiedPage[0].setRotation(pdfRotation)
+          }
+
           mergedPdf.addPage(copiedPage[0])
         }
       }
@@ -819,7 +876,7 @@ export default function PDFManager() {
       const mergedPdfBytes = await mergedPdf.save()
 
       // NEW: Process hyperlinks first
-      const processedPdfBytes = await processHyperlinks(mergedPdfBytes)
+      const processedPdfBytes = await processHyperlinks(mergedPdfBytes, true, compressionLevel[0])
       const processedBlob = new Blob([processedPdfBytes], {
         type: 'application/pdf',
       })
@@ -1128,6 +1185,29 @@ export default function PDFManager() {
           const { width, height } = image
           const imagePage = mergedPdf.addPage([width, height])
 
+          // ✅ APLICAR ROTAÇÃO PARA IMAGENS
+          const rotation = pageRotations[pageData.id] || 0
+          console.log('🔍 DEBUG - Imagem (handleMergeAndCompress):', pageData.id, 'Rotação CSS:', rotation)
+          if (rotation !== 0) {
+            let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
+            switch (rotation) {
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
+                break
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
+                break
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+            console.log('🔍 DEBUG - Aplicando rotação PDF (imagem handleMergeAndCompress):', pdfRotation)
+            imagePage.setRotation(pdfRotation)
+          }
+
           // Draw the image on the page
           imagePage.drawImage(image, {
             x: 0,
@@ -1142,6 +1222,30 @@ export default function PDFManager() {
           const copiedPage = await mergedPdf.copyPages(pdf, [
             pageData.pageIndex,
           ])
+
+          // ✅ APLICAR ROTAÇÃO PARA PDFs
+          const rotation = pageRotations[pageData.id] || 0
+          console.log('🔍 DEBUG - PDF (handleMergeAndCompress):', pageData.id, 'Rotação CSS:', rotation)
+          if (rotation !== 0) {
+            let pdfRotation
+            // ✅ MAPEAMENTO COMPLETAMENTE INVERTIDO
+            switch (rotation) {
+              case 90:  // direita no CSS
+                pdfRotation = degrees(90)   // direita no PDF
+                break
+              case 180: // baixo no CSS  
+                pdfRotation = degrees(180) // baixo no PDF
+                break
+              case 270: // esquerda no CSS
+                pdfRotation = degrees(270) // esquerda no PDF
+                break
+              default:
+                pdfRotation = degrees(0)
+            }
+            console.log('🔍 DEBUG - Aplicando rotação PDF corrigida (handleMergeAndCompress):', pdfRotation)
+            copiedPage[0].setRotation(pdfRotation)
+          }
+
           mergedPdf.addPage(copiedPage[0])
         }
       }
@@ -1161,20 +1265,18 @@ export default function PDFManager() {
       const formData = new FormData()
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
       formData.append('file', blob, 'merged.pdf')
-      formData.append('compression_level', compressionLevel[0].toString()) // ADICIONAR ESTA LINHA
+      formData.append('compress', 'true')
+      formData.append('compression_level', compressionLevel[0].toString())
 
-      // Use Python API on Docker port 5001
-      const response = await fetch(
-        '/api/compress-configurable',
-        {
-          method: 'POST',
-          body: formData,
-        },
-      )
+      // Use hyperlinks API that handles compression
+      const response = await fetch('/api/hyperlinks', {
+        method: 'POST',
+        body: formData,
+      })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro na compressão Python')
+        throw new Error(errorData.error || 'Erro na compressão')
       }
 
       setProgress(90)
@@ -1214,12 +1316,14 @@ export default function PDFManager() {
 
   // Modify the compressPdfClientSide function to use the state
   // Add hyperlink processing function
-  const processHyperlinks = async (pdfBytes, shouldCompress = false) => {
+  const processHyperlinks = async (pdfBytes, shouldCompress = false, compressionLevel = 2) => {
     try {
       const formData = new FormData()
       const blob = new Blob([pdfBytes], { type: 'application/pdf' })
       formData.append('file', blob, 'document.pdf')
-      formData.append('compress', shouldCompress.toString()) // ✅ Novo parâmetro
+      formData.append('compress', shouldCompress.toString())
+      formData.append('compression_level', compressionLevel.toString())
+      formData.append('rotations', JSON.stringify(pageRotations))
 
       const response = await fetch('/api/hyperlinks', {
         method: 'POST',
