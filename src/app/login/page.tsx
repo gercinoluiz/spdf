@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { LoginForm } from '../../components/login-form'
 import imageLoginPage from '../../../assets/loginImage.json'
 
@@ -19,7 +20,9 @@ export default function LoginPage() {
       {/* Right side - Login Form */}
       <div className='flex-1 flex items-center justify-center p-8 bg-background'>
         <div className='w-full max-w-md'>
-          <LoginForm />
+          <Suspense fallback={<div className="flex items-center justify-center p-8">Carregando...</div>}>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>
