@@ -14,11 +14,16 @@ import { useUserStore } from '@/store/useUserStore'
 import { signIn } from 'next-auth/react'
 
 export function LoginForm() {
+  const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setUser } = useUserStore()
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [isOidcLoading, setIsOidcLoading] = useState(false)
   
   // Adicionar estados para os campos do formulário
@@ -230,10 +235,10 @@ export function LoginForm() {
             </Button> */}
             
             <p className='text-center text-sm text-muted-foreground'>
-              {'Não tem uma conta? '}
-              <Link href='/signup' className='text-primary hover:underline'>
+              {'Não tem uma conta ? '}
+              
                 Fale com seu gestor e solicite uma!
-              </Link>
+            
             </p>
           </CardFooter>
         </form>

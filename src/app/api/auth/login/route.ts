@@ -17,9 +17,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verificar se o usuário existe no banco de dados
-    const user = await prisma.user.findUnique({
-      where: { login },
+    // Verificar se o usuário existe no banco de dados (case insensitive para login)
+    const user = await prisma.user.findFirst({
+      where: { 
+        login: {
+          equals: login,
+          mode: 'insensitive'
+        }
+      },
     })
 
     if (!user) {

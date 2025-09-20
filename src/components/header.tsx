@@ -66,7 +66,7 @@ export const Header = () => {
           <div className='flex items-center space-x-2'>
             <div>
               <Link href={'/'}>
-                <Image src={logo} alt='logo' className='w-20 h-20' />
+                <Image src={logo} alt='logo' className='w-30 h-20' />
               </Link>
             </div>
           </div>

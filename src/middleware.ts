@@ -14,8 +14,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Permitir acesso APENAS à página de login para usuários não autenticados
-  if (request.nextUrl.pathname === '/login') {
+  // Permitir acesso às páginas públicas (login, forgot-password, reset-password)
+  const publicRoutes = ['/login', '/forgot-password', '/reset-password'];
+  if (publicRoutes.includes(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
 

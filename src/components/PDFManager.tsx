@@ -1429,9 +1429,9 @@ export default function PDFManager() {
       setProgress(50)
       setProgressMessage('Comprimindo PDF...')
 
-      // Enviar para a API Python de compressão (Docker na porta 5001)
+      // Enviar para a API de hyperlinks (que já faz compressão)
       const response = await fetch(
-        '/api/compress-configurable',
+        '/api/hyperlinks',
         {
           method: 'POST',
           body: formData,

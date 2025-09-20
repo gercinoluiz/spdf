@@ -23,8 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import Image from 'next/image'
-import logo from '../../../assets/logo.png'
+
 import Spin from '@/components/spin'
 import Link from 'next/link'
 import { Header } from '@/components/header'

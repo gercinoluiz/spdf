@@ -399,28 +399,7 @@ export default function UserManagement({ params }: { params: Promise<{ id: strin
                 </div>
               </CardContent>
             </Card>
-{/* 
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-lg'>Ações Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='space-y-2'>
-                  <Button variant='outline' className='w-full justify-start'>
-                    <Plus className='h-4 w-4 mr-2' />
-                    Adicionar Usuário em Lote
-                  </Button>
-                  <Button variant='outline' className='w-full justify-start'>
-                    <Download className='h-4 w-4 mr-2' />
-                    Relatório de Uso
-                  </Button>
-                  <Button variant='outline' className='w-full justify-start'>
-                    <Edit className='h-4 w-4 mr-2' />
-                    Configurações do Cliente
-                  </Button>
-                </div>
-              </CardContent>
-            </Card> */}
+
           </div>
         </div>
       </div>
